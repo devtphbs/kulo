@@ -38,7 +38,6 @@ html, body {
   padding: 24px 16px 40px;
   animation: fadeIn 0.25s ease;
 }
-.screen.active { display: flex; }
 @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
 
 /* ── Typography ── */
