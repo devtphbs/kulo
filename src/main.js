@@ -9,8 +9,8 @@ const S={
   gameId:null,playerId:null,playerName:null,isHost:false,
   game:null,players:[],myHand:[],selectedCard:null,
   subscription:null,maxPlayers:4,colorMode:'color',
-  timerInterval:null,timerSec:60,muted:false,
-  audioCtx:null,musicInterval:null,
+  timerInterval:null,timerSec:60,
+  drawnThisTurn:0, // track how many cards drawn this turn
 }
 
 // ── Screens ───────────────────────────────────────────────────
@@ -31,60 +31,6 @@ function myTurn(){if(!S.game||!S.players.length)return false;return S.players[S.
 function isFrozen(){return((S.game?.frozen_turns||{})[S.playerId]||0)>0}
 function bwMode(){return S.game?.color_mode==='bw'}
 function is2Player(){return S.players.length===2}
-
-// ── 🎵 Kahoot-style music ─────────────────────────────────────
-function initAudio(){
-  if(S.audioCtx)return
-  S.audioCtx=new(window.AudioContext||window.webkitAudioContext)()
-}
-
-function playNote(freq,start,dur,vol=0.18){
-  if(S.muted||!S.audioCtx)return
-  const osc=S.audioCtx.createOscillator()
-  const gain=S.audioCtx.createGain()
-  osc.connect(gain);gain.connect(S.audioCtx.destination)
-  osc.type='square'
-  osc.frequency.setValueAtTime(freq,S.audioCtx.currentTime+start)
-  gain.gain.setValueAtTime(0,S.audioCtx.currentTime+start)
-  gain.gain.linearRampToValueAtTime(vol,S.audioCtx.currentTime+start+0.01)
-  gain.gain.exponentialRampToValueAtTime(0.001,S.audioCtx.currentTime+start+dur)
-  osc.start(S.audioCtx.currentTime+start)
-  osc.stop(S.audioCtx.currentTime+start+dur+0.05)
-}
-
-// Kahoot-inspired melody loop
-const MELODY=[
-  [659,0,.18],[523,.25,.18],[587,.5,.18],[698,.75,.18],
-  [659,1.0,.18],[523,1.25,.18],[494,1.5,.35],
-  [523,2.0,.18],[587,2.25,.18],[659,2.5,.18],[784,2.75,.18],
-  [880,3.0,.35],[784,3.5,.18],[698,3.75,.18],
-  [659,4.0,.18],[523,4.25,.18],[587,4.5,.18],[698,4.75,.18],
-  [659,5.0,.18],[494,5.25,.18],[440,5.5,.35],
-  [392,6.0,.18],[440,6.25,.18],[494,6.5,.18],[523,6.75,.18],
-  [587,7.0,.35],[523,7.5,.18],[494,7.75,.18],
-]
-const LOOP_DUR=8.2
-
-function startMusic(){
-  if(S.muted||!S.audioCtx)return
-  stopMusic()
-  function playLoop(){
-    if(S.muted)return
-    MELODY.forEach(([f,t,d])=>playNote(f,t,d))
-    S.musicTimeout=setTimeout(playLoop,LOOP_DUR*1000)
-  }
-  playLoop()
-}
-function stopMusic(){
-  clearTimeout(S.musicTimeout)
-}
-function toggleMute(){
-  S.muted=!S.muted
-  const btn=document.getElementById('mute-btn')
-  btn.textContent=S.muted?'🔇':'🔊'
-  if(!S.muted){initAudio();startMusic()}
-  else stopMusic()
-}
 
 // ── Draw notification ─────────────────────────────────────────
 function showDrawNotif(msg){
@@ -166,11 +112,10 @@ async function onUpdate(){
       await doDraw(la.count,false,true) // forced, no advance
       return
     }
-    if(myTurn()&&!isFrozen())startTimer()
-    else stopTimer()
+    if(myTurn()&&!isFrozen()){S.drawnThisTurn=0;startTimer()}else{stopTimer()}
     renderGame()
   } else if(st==='finished'){
-    stopTimer();stopMusic();renderWinner()
+    stopTimer();renderWinner()
   }
 }
 
@@ -301,10 +246,6 @@ function renderGame(){
   const isMyTurn=myTurn(),frozen=isFrozen()
   const cur=players[game.current_player_index]
 
-  // Mute button
-  const mb=document.getElementById('mute-btn')
-  if(mb)mb.textContent=S.muted?'🔇':'🔊'
-
   // Opponents
   const oe=document.getElementById('game-others');oe.innerHTML=''
   players.filter(p=>p.id!==S.playerId).forEach(p=>{
@@ -373,6 +314,8 @@ function renderHand(canAct){
     const playable=canAct&&canPlay(card,game.top_card,game.active_color)&&(game.pending_draw===0||card.name==='Dra 2'||card.name==='Dra 4')
     const isSel=S.selectedCard===origIdx
     const ce=renderCard(card,{selected:isSel,unplayable:!playable,bwMode:bwMode()})
+    // Add playable class for visual lift (only if not selected, which has its own transform)
+    if(playable&&!isSel)ce.classList.add('playable')
     ce.addEventListener('click',()=>{
       if(!canAct){toast('Inte din tur! 😅');return}
       if(!playable){toast('Passar inte! 🚫');return}
@@ -403,14 +346,31 @@ async function doDraw(count,fromClick,forced){
     const keep=discard.splice(discard.length-1,1)
     deck=shuffle(discard);discard=keep;toast('Kortleken blandas om! 🔀')
   }
-  const drawn=deck.splice(deck.length-count,count)
+
+  let drawn
+  if(fromClick&&count===1){
+    S.drawnThisTurn=(S.drawnThisTurn||0)+1
+    // On the 3rd draw, guarantee a playable card
+    if(S.drawnThisTurn>=3){
+      const playableInDeck=deck.findIndex(c=>canPlay(c,game.top_card,game.active_color))
+      if(playableInDeck!==-1){
+        // Move it to the top
+        const [guaranteedCard]=deck.splice(playableInDeck,1)
+        deck.push(guaranteedCard)
+      }
+    }
+    drawn=deck.splice(deck.length-1,1)
+  } else {
+    drawn=deck.splice(deck.length-count,count)
+  }
+
   const newHand=[...S.myHand,...drawn]
   S.myHand=newHand
   await updatePlayer(S.playerId,{hand:newHand})
   await updateGame(S.gameId,{draw_pile:deck,discard_pile:discard,pending_draw:0})
 
   if(forced){
-    // After forced draw, advance turn
+    S.drawnThisTurn=0
     await advanceToNext(game.direction,0)
     return
   }
@@ -418,13 +378,25 @@ async function doDraw(count,fromClick,forced){
   if(fromClick&&drawn.length===1){
     if(canPlay(drawn[0],game.top_card,game.active_color)){
       stopTimer()
-      toast('Du drog ett kort som passar — tryck för att lägga det!')
+      if(S.drawnThisTurn>=3)toast('Garanterat kort — det passar! Tryck för att lägga det! 🎯')
+      else toast('Du drog ett kort som passar — tryck för att lägga det!')
       renderHand(true)
-      return // Player can choose to play or not — but we start fresh timer
+      return
     } else {
-      toast('Kortet passar inte, passar!')
+      if(S.drawnThisTurn>=3)toast('Ingen passade — turen går vidare!')
+      else toast('Passar inte, dra ett till eller passa')
+      // If drawn 3 times and still nothing playable, advance turn
+      if(S.drawnThisTurn>=3){
+        S.drawnThisTurn=0
+        await advanceToNext(game.direction,0)
+        return
+      }
+      // Otherwise stay on same player — they can try drawing again
+      renderHand(true)
+      return
     }
   }
+  S.drawnThisTurn=0
   await advanceToNext(game.direction,0)
 }
 
@@ -540,9 +512,6 @@ async function advanceToNext(dir,extraSkip){
 async function checkWin(hand){if(hand.length===0)await updateGame(S.gameId,{status:'finished',winner_id:S.playerId})}
 
 document.getElementById('kulo-btn').addEventListener('click',async()=>{await updatePlayer(S.playerId,{kulo_called:true});toast('🔔 KULO! Du är säker!')})
-
-// Mute button
-document.getElementById('mute-btn').addEventListener('click',()=>{initAudio();toggleMute()})
 
 // ── WINNER ────────────────────────────────────────────────────
 function renderWinner(){

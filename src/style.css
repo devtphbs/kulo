@@ -4,8 +4,8 @@
   --text:#f0f0f0;--muted:rgba(255,255,255,0.42);--accent:#e74c3c;--gold:#f39c12;--green:#27ae60;
   --cw:80px;--ch:118px;--cw-lg:100px;--ch-lg:148px;
 }
-html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;overflow-x:hidden;-webkit-tap-highlight-color:transparent;user-select:none}
-#app{min-height:100vh}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;overflow:hidden;-webkit-tap-highlight-color:transparent;user-select:none}
+#app{height:100%;overflow:hidden}
 
 /* ── Screens ── */
 .screen{display:none;flex-direction:column;align-items:center;min-height:100vh;padding:28px 16px 40px;gap:14px;animation:fadeIn .2s ease}
@@ -131,14 +131,29 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Nunito
 .hand-label{font-family:'Fredoka One',cursive;font-size:10px;letter-spacing:.35em;color:var(--muted)}
 .kulo-btn{font-family:'Fredoka One',cursive;font-size:15px;background:var(--accent);color:#fff;border:none;border-radius:22px;padding:8px 24px;cursor:pointer;box-shadow:0 3px 0 #c0392b;animation:kuloWiggle .5s ease infinite alternate;touch-action:manipulation}
 @keyframes kuloWiggle{to{transform:scale(1.05)}}
-.hand-scroll{display:flex;gap:7px;overflow-x:auto;padding:4px 12px 12px;scrollbar-width:none}
+/* overflow:hidden on hand-area clips the container; overflow-x:auto only on the scroll div */
+.hand-scroll{
+  display:flex;
+  gap:7px;
+  overflow-x:auto;
+  overflow-y:visible;
+  padding:20px 16px 14px; /* top padding so lifted cards don't get clipped */
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+  /* prevent the scroll from bubbling to the page */
+  overscroll-behavior-x:contain;
+  touch-action:pan-x;
+}
 .hand-scroll::-webkit-scrollbar{display:none}
 
 /* ── Cards ── */
-.card{width:var(--cw);height:var(--ch);border-radius:9px;position:relative;overflow:hidden;flex-shrink:0;border:2px solid rgba(255,255,255,.2);cursor:pointer;transition:transform .15s,box-shadow .15s;touch-action:manipulation}
+.card{width:var(--cw);height:var(--ch);border-radius:9px;position:relative;overflow:hidden;flex-shrink:0;border:2px solid rgba(255,255,255,.2);cursor:pointer;transition:transform .2s,box-shadow .2s;touch-action:manipulation}
 .card.lg{width:var(--cw-lg);height:var(--ch-lg)}
-.card.unplayable{opacity:.38;cursor:not-allowed}
-.card.selected{transform:translateY(-16px);box-shadow:0 16px 32px rgba(0,0,0,.55);border-color:rgba(255,255,255,.75)}
+.card.unplayable{opacity:.35;cursor:not-allowed;filter:grayscale(30%)}
+/* Playable cards get a subtle lift so they stand out */
+.card.playable{transform:translateY(-10px);box-shadow:0 10px 24px rgba(0,0,0,.45);border-color:rgba(255,255,255,.5)}
+/* Selected card lifts further */
+.card.selected{transform:translateY(-22px)!important;box-shadow:0 20px 36px rgba(0,0,0,.6),0 0 0 3px rgba(255,255,255,.8)!important;border-color:rgba(255,255,255,.9)!important}
 .card-frame{position:absolute;inset:5px;border-radius:6px;border:1.5px solid rgba(255,255,255,.22);pointer-events:none}
 .card-oval{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-20deg);width:76%;height:50%;border-radius:50%;background:rgba(0,0,0,.18);pointer-events:none}
 .card-tl{position:absolute;top:6px;left:7px;line-height:1}
