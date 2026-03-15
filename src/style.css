@@ -127,23 +127,39 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Nunito
 
 /* Hand */
 .hand-area{flex-shrink:0;background:rgba(0,0,0,.28);border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom,0px)}
-.hand-top-row{display:flex;align-items:center;justify-content:space-between;padding:8px 14px 4px}
-.hand-label{font-family:'Fredoka One',cursive;font-size:10px;letter-spacing:.35em;color:var(--muted)}
-.kulo-btn{font-family:'Fredoka One',cursive;font-size:15px;background:var(--accent);color:#fff;border:none;border-radius:22px;padding:8px 24px;cursor:pointer;box-shadow:0 3px 0 #c0392b;animation:kuloWiggle .5s ease infinite alternate;touch-action:manipulation}
+.hand-top-row{display:flex;align-items:center;justify-content:space-between;padding:6px 12px 4px;gap:8px}
+.hand-label{font-family:'Fredoka One',cursive;font-size:9px;letter-spacing:.3em;color:var(--muted);white-space:nowrap}
+.hand-actions{display:flex;align-items:center;gap:8px}
+.show-all-btn{font-family:'Fredoka One',cursive;font-size:12px;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:16px;padding:5px 12px;cursor:pointer;touch-action:manipulation;white-space:nowrap}
+.kulo-btn{font-family:'Fredoka One',cursive;font-size:14px;background:var(--accent);color:#fff;border:none;border-radius:22px;padding:7px 20px;cursor:pointer;box-shadow:0 3px 0 #c0392b;animation:kuloWiggle .5s ease infinite alternate;touch-action:manipulation;white-space:nowrap}
 @keyframes kuloWiggle{to{transform:scale(1.05)}}
+/* Hand scroll: fixed height so cards are fully visible, no clipping */
 .hand-scroll{
   display:flex;
-  gap:7px;
+  gap:6px;
   overflow-x:scroll;
   overflow-y:visible;
-  padding:24px 16px 14px;
+  /* top padding = how much playable cards lift up (10px) + buffer */
+  padding:14px 12px 10px;
   scrollbar-width:none;
   -webkit-overflow-scrolling:touch;
   overscroll-behavior-x:contain;
-  /* pan-x lets horizontal swipe scroll work; vertical drag handled in JS */
   touch-action:pan-x;
+  /* Enough height for card + lift */
+  min-height:calc(var(--ch) + 28px);
+  align-items:flex-end;
 }
 .hand-scroll::-webkit-scrollbar{display:none}
+
+/* ── "Visa alla kort" popup ── */
+.all-cards-overlay{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.85);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;animation:fadeIn .2s ease}
+.all-cards-box{background:#0d1829;border-radius:20px 20px 0 0;border-top:1px solid rgba(255,255,255,.12);width:100%;max-height:80vh;display:flex;flex-direction:column;padding:0 0 env(safe-area-inset-bottom,12px)}
+.all-cards-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 10px;border-bottom:1px solid rgba(255,255,255,.08)}
+.all-cards-title{font-family:'Fredoka One',cursive;font-size:18px;color:#fff;letter-spacing:.06em}
+.all-cards-close{font-family:'Fredoka One',cursive;font-size:14px;background:rgba(255,255,255,.1);color:#fff;border:none;border-radius:16px;padding:6px 14px;cursor:pointer;touch-action:manipulation}
+.all-cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--cw),1fr));gap:10px;overflow-y:auto;padding:14px 14px;-webkit-overflow-scrolling:touch}
+.all-cards-grid .card{width:100%!important;height:var(--ch)!important}
+.all-cards-play-hint{font-family:'Fredoka One',cursive;font-size:11px;color:var(--muted);text-align:center;padding:0 14px 8px;letter-spacing:.08em}
 
 /* ── Cards ── */
 .card{width:var(--cw);height:var(--ch);border-radius:9px;position:relative;overflow:hidden;flex-shrink:0;border:2px solid rgba(255,255,255,.2);cursor:pointer;transition:transform .2s,box-shadow .2s;touch-action:manipulation}

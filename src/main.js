@@ -577,6 +577,66 @@ async function checkWin(hand){if(hand.length===0)await updateGame(S.gameId,{stat
 
 document.getElementById('kulo-btn').addEventListener('click',async()=>{await updatePlayer(S.playerId,{kulo_called:true});toast('🔔 KULO! Du är säker!')})
 
+// ── VISA ALLA KORT popup ──────────────────────────────────────
+document.getElementById('show-all-btn').addEventListener('click',()=>openAllCards())
+document.getElementById('all-cards-close').addEventListener('click',()=>{
+  document.getElementById('all-cards-overlay').style.display='none'
+})
+document.getElementById('all-cards-overlay').addEventListener('click',(e)=>{
+  if(e.target===document.getElementById('all-cards-overlay'))
+    document.getElementById('all-cards-overlay').style.display='none'
+})
+
+function openAllCards(){
+  const game=S.game
+  const isMyTurn=myTurn()&&!isFrozen()
+  const overlay=document.getElementById('all-cards-overlay')
+  const grid=document.getElementById('all-cards-grid')
+  const hint=document.getElementById('all-cards-hint')
+  const title=document.getElementById('all-cards-title')
+
+  title.textContent='Dina kort ('+S.myHand.length+')'
+
+  const sorted=[...S.myHand].map((c,i)=>({c,i})).sort((a,b)=>{
+    const o={number:0,special:1,wild:2},d=(o[a.c.type]||0)-(o[b.c.type]||0)
+    if(d!==0)return d
+    if(a.c.type==='number')return(a.c.value||0)-(b.c.value||0)
+    return(a.c.name||'').localeCompare(b.c.name||'')
+  })
+
+  const playableOnes=sorted.filter(({c})=>isMyTurn&&canPlay(c,game?.top_card,game?.active_color)&&(game?.pending_draw===0||c.name==='Dra 2'||c.name==='Dra 4'))
+
+  if(isMyTurn){
+    hint.textContent=playableOnes.length>0
+      ?'✅ Du kan lägga '+playableOnes.length+' kort — tryck på ett för att lägga det!'
+      :'❌ Inga kort passar just nu — dra ett kort!'
+  } else {
+    hint.textContent='Väntar på din tur...'
+  }
+
+  grid.innerHTML=''
+  sorted.forEach(({c:card,i:origIdx})=>{
+    const playable=playableOnes.some(p=>p.i===origIdx)
+    const ce=renderCard(card,{unplayable:!playable,bwMode:bwMode()})
+    ce.style.width='100%'
+    // Green glow on playable cards in the popup
+    if(playable){
+      ce.style.boxShadow='0 0 0 3px rgba(39,174,96,.8)'
+      ce.style.borderColor='rgba(39,174,96,1)'
+    }
+    if(playable&&isMyTurn){
+      ce.addEventListener('click',()=>{
+        overlay.style.display='none'
+        S.selectedCard=null
+        playCard(origIdx)
+      })
+    }
+    grid.appendChild(ce)
+  })
+
+  overlay.style.display='flex'
+}
+
 // ── WINNER ────────────────────────────────────────────────────
 function renderWinner(){
   show('winner')

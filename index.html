@@ -134,12 +134,27 @@
     <div class="hand-area">
       <div class="hand-top-row">
         <span class="hand-label">DIN HAND</span>
-        <button class="kulo-btn" id="kulo-btn" style="display:none">🔔 KULO!</button>
+        <div class="hand-actions">
+          <button class="show-all-btn" id="show-all-btn">👁 Visa alla</button>
+          <button class="kulo-btn" id="kulo-btn" style="display:none">🔔 KULO!</button>
+        </div>
       </div>
       <div class="hand-scroll" id="hand-cards"></div>
     </div>
     <!-- Timer bottom right -->
     <div id="turn-timer" class="turn-timer-fixed"></div>
+  </div>
+
+  <!-- VISA ALLA KORT popup -->
+  <div id="all-cards-overlay" class="all-cards-overlay" style="display:none">
+    <div class="all-cards-box">
+      <div class="all-cards-header">
+        <span class="all-cards-title" id="all-cards-title">Dina kort</span>
+        <button class="all-cards-close" id="all-cards-close">✕ Stäng</button>
+      </div>
+      <div class="all-cards-play-hint" id="all-cards-hint"></div>
+      <div class="all-cards-grid" id="all-cards-grid"></div>
+    </div>
   </div>
 
   <!-- WINNER -->
