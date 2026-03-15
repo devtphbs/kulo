@@ -304,26 +304,90 @@ function renderGame(){
 function renderHand(canAct){
   const he=document.getElementById('hand-cards');he.innerHTML=''
   const game=S.game
+
   const sorted=[...S.myHand].map((c,i)=>({c,i})).sort((a,b)=>{
     const o={number:0,special:1,wild:2},d=(o[a.c.type]||0)-(o[b.c.type]||0)
     if(d!==0)return d
     if(a.c.type==='number')return(a.c.value||0)-(b.c.value||0)
     return(a.c.name||'').localeCompare(b.c.name||'')
   })
-  sorted.forEach(({c:card,i:origIdx})=>{
-    const playable=canAct&&canPlay(card,game.top_card,game.active_color)&&(game.pending_draw===0||card.name==='Dra 2'||card.name==='Dra 4')
+
+  // Split into playable and unplayable
+  const playableCards=sorted.filter(({c:card})=>canAct&&canPlay(card,game.top_card,game.active_color)&&(game.pending_draw===0||card.name==='Dra 2'||card.name==='Dra 4'))
+  const unplayableCards=sorted.filter(({c:card})=>!canAct||!canPlay(card,game.top_card,game.active_color)||(game.pending_draw>0&&card.name!=='Dra 2'&&card.name!=='Dra 4'))
+
+  // Playable cards first (they'll appear lifted in center), then unplayable
+  const ordered=[...playableCards,...unplayableCards]
+
+  ordered.forEach(({c:card,i:origIdx})=>{
+    const playable=playableCards.some(p=>p.i===origIdx)
     const isSel=S.selectedCard===origIdx
     const ce=renderCard(card,{selected:isSel,unplayable:!playable,bwMode:bwMode()})
-    // Add playable class for visual lift (only if not selected, which has its own transform)
-    if(playable&&!isSel)ce.classList.add('playable')
+    if(playable&&!isSel) ce.classList.add('playable')
+
+    // Touch drag-to-play: drag card up toward discard pile to play it
+    let dragStartY=0, dragStartX=0, isDragging=false
+    ce.addEventListener('touchstart',e=>{
+      dragStartY=e.touches[0].clientY
+      dragStartX=e.touches[0].clientX
+      isDragging=false
+    },{passive:true})
+    ce.addEventListener('touchmove',e=>{
+      const dy=dragStartY-e.touches[0].clientY
+      const dx=Math.abs(e.touches[0].clientX-dragStartX)
+      // Only intercept upward drag, not horizontal scroll
+      if(dy>20&&dy>dx){
+        isDragging=true
+        e.preventDefault()
+        const pct=Math.min(1,dy/120)
+        ce.style.transform=`translateY(${-10-pct*60}px) scale(${1+pct*0.05})`
+        ce.style.boxShadow=`0 ${20+pct*20}px ${40+pct*20}px rgba(0,0,0,.6)`
+        ce.style.borderColor=`rgba(255,255,255,${0.4+pct*0.5})`
+        ce.style.zIndex='50'
+      }
+    },{passive:false})
+    ce.addEventListener('touchend',e=>{
+      if(isDragging){
+        const dy=dragStartY-e.changedTouches[0].clientY
+        ce.style.transform=''
+        ce.style.boxShadow=''
+        ce.style.borderColor=''
+        ce.style.zIndex=''
+        if(dy>80&&playable){
+          // Dragged far enough — play the card
+          S.selectedCard=null
+          playCard(origIdx)
+          return
+        }
+        // Not far enough — snap back
+        return
+      }
+    },{passive:true})
+
+    // Tap to select/play
     ce.addEventListener('click',()=>{
+      if(isDragging)return
       if(!canAct){toast('Inte din tur! 😅');return}
       if(!playable){toast('Passar inte! 🚫');return}
       if(isSel){S.selectedCard=null;playCard(origIdx)}
       else{S.selectedCard=origIdx;renderHand(canAct)}
     })
+
     he.appendChild(ce)
   })
+
+  // Scroll playable cards into view (center them)
+  if(playableCards.length>0&&canAct){
+    requestAnimationFrame(()=>{
+      const firstPlayable=he.querySelector('.playable')
+      if(firstPlayable){
+        const containerW=he.offsetWidth
+        const cardLeft=firstPlayable.offsetLeft
+        const cardW=firstPlayable.offsetWidth
+        he.scrollLeft=cardLeft-(containerW/2)+(cardW/2)
+      }
+    })
+  }
 }
 
 // Draw pile click

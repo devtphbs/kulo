@@ -126,22 +126,21 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Nunito
 .status-banner.frozen{background:rgba(41,128,185,.2);color:#3498db;border:1px solid rgba(41,128,185,.35)}
 
 /* Hand */
-.hand-area{flex-shrink:0;background:rgba(0,0,0,.28);border-top:1px solid var(--border)}
+.hand-area{flex-shrink:0;background:rgba(0,0,0,.28);border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom,0px)}
 .hand-top-row{display:flex;align-items:center;justify-content:space-between;padding:8px 14px 4px}
 .hand-label{font-family:'Fredoka One',cursive;font-size:10px;letter-spacing:.35em;color:var(--muted)}
 .kulo-btn{font-family:'Fredoka One',cursive;font-size:15px;background:var(--accent);color:#fff;border:none;border-radius:22px;padding:8px 24px;cursor:pointer;box-shadow:0 3px 0 #c0392b;animation:kuloWiggle .5s ease infinite alternate;touch-action:manipulation}
 @keyframes kuloWiggle{to{transform:scale(1.05)}}
-/* overflow:hidden on hand-area clips the container; overflow-x:auto only on the scroll div */
 .hand-scroll{
   display:flex;
   gap:7px;
-  overflow-x:auto;
+  overflow-x:scroll;
   overflow-y:visible;
-  padding:20px 16px 14px; /* top padding so lifted cards don't get clipped */
+  padding:24px 16px 14px;
   scrollbar-width:none;
   -webkit-overflow-scrolling:touch;
-  /* prevent the scroll from bubbling to the page */
   overscroll-behavior-x:contain;
+  /* pan-x lets horizontal swipe scroll work; vertical drag handled in JS */
   touch-action:pan-x;
 }
 .hand-scroll::-webkit-scrollbar{display:none}
@@ -232,16 +231,39 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Nunito
 .turn-timer-fixed.danger { color: #e74c3c; border-color: rgba(231,76,60,0.5); animation: timerPulse .25s ease infinite alternate; }
 @keyframes timerPulse { to { transform: scale(1.08); } }
 
-/* ── Mute button ── */
-.mute-btn {
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 8px;
-  color: #fff;
-  font-size: 18px;
-  padding: 6px 10px;
-  cursor: pointer;
-  touch-action: manipulation;
-  transition: background 0.15s;
+/* ── Mobile responsive — iPhone 11, 14 Pro, 15 ── */
+/* Safe area insets for notch/dynamic island */
+.game-layout {
+  padding-top: env(safe-area-inset-top, 0px) !important;
+  padding-bottom: env(safe-area-inset-bottom, 0px) !important;
 }
-.mute-btn:active { background: rgba(255,255,255,0.18); }
+.game-top {
+  padding-top: max(10px, env(safe-area-inset-top, 10px));
+}
+
+/* Small phones (iPhone SE, 375px wide) */
+@media (max-width: 390px) {
+  :root { --cw: 62px; --ch: 92px; --cw-lg: 85px; --ch-lg: 126px; }
+  .game-top { padding: 6px 10px; }
+  .status-banner { font-size: 11px; padding: 5px 12px; }
+  .opp { min-width: 50px; padding: 4px 5px; }
+  .opp-name { font-size: 9px; }
+}
+
+/* Standard phones (iPhone 11, 12, 13, 14, 15 — 390–430px) */
+@media (min-width: 391px) and (max-width: 430px) {
+  :root { --cw: 70px; --ch: 104px; --cw-lg: 95px; --ch-lg: 140px; }
+}
+
+/* Large phones (iPhone Pro Max, 430px+) */
+@media (min-width: 431px) {
+  :root { --cw: 76px; --ch: 112px; --cw-lg: 100px; --ch-lg: 148px; }
+}
+
+/* Landscape mode on phones */
+@media (max-height: 500px) and (orientation: landscape) {
+  :root { --cw: 58px; --ch: 86px; --cw-lg: 74px; --ch-lg: 110px; }
+  .hand-scroll { padding: 10px 12px 8px; }
+  .opponents-row { min-height: 56px; padding: 4px 8px; }
+  .play-area { gap: 6px; }
+}
