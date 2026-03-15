@@ -396,13 +396,13 @@ document.getElementById('draw-pile-slot').addEventListener('click',async()=>{
   if(S.game?.pending_draw>0){
     const hasStack=S.myHand.some(c=>c.name==='Dra 2'||c.name==='Dra 4')
     if(!hasStack){await doDraw(S.game.pending_draw,false,false);return}
-    toast('Du kan stacka ett Dra-kort, eller tryck igen för att dra')
+    toast('Du kan stacka ett Dra-kort!')
     return
   }
   await doDraw(1,true,false)
 })
 
-// doDraw: count=antal, fromClick=om spelaren klickade själv, forced=om det är påtvingat av motståndare
+// doDraw: count=antal, fromClick=om spelaren klickade själv, forced=påtvingat av motståndare
 async function doDraw(count,fromClick,forced){
   const game=S.game
   let deck=[...(game.draw_pile||[])],discard=[...(game.discard_pile||[])]
@@ -410,53 +410,30 @@ async function doDraw(count,fromClick,forced){
     const keep=discard.splice(discard.length-1,1)
     deck=shuffle(discard);discard=keep;toast('Kortleken blandas om! 🔀')
   }
-
-  let drawn
-  if(fromClick&&count===1){
-    S.drawnThisTurn=(S.drawnThisTurn||0)+1
-    // On the 3rd draw, guarantee a playable card
-    if(S.drawnThisTurn>=3){
-      const playableInDeck=deck.findIndex(c=>canPlay(c,game.top_card,game.active_color))
-      if(playableInDeck!==-1){
-        // Move it to the top
-        const [guaranteedCard]=deck.splice(playableInDeck,1)
-        deck.push(guaranteedCard)
-      }
-    }
-    drawn=deck.splice(deck.length-1,1)
-  } else {
-    drawn=deck.splice(deck.length-count,count)
-  }
-
+  const drawn=deck.splice(deck.length-count,count)
   const newHand=[...S.myHand,...drawn]
   S.myHand=newHand
   await updatePlayer(S.playerId,{hand:newHand})
   await updateGame(S.gameId,{draw_pile:deck,discard_pile:discard,pending_draw:0})
 
   if(forced){
-    S.drawnThisTurn=0
     await advanceToNext(game.direction,0)
     return
   }
 
+  // Single draw from click: check if drawn card is playable
   if(fromClick&&drawn.length===1){
-    if(canPlay(drawn[0],game.top_card,game.active_color)){
+    const drawnCard=drawn[0]
+    if(canPlay(drawnCard,game.top_card,game.active_color)){
       stopTimer()
-      if(S.drawnThisTurn>=3)toast('Garanterat kort — det passar! Tryck för att lägga det! 🎯')
-      else toast('Du drog ett kort som passar — tryck för att lägga det!')
+      toast('Du drog ett kort som passar — tryck för att lägga det!')
       renderHand(true)
-      return
+      return // Player sees it highlighted and can tap to play
     } else {
-      if(S.drawnThisTurn>=3)toast('Ingen passade — turen går vidare!')
-      else toast('Passar inte, dra ett till eller passa')
-      // If drawn 3 times and still nothing playable, advance turn
-      if(S.drawnThisTurn>=3){
-        S.drawnThisTurn=0
-        await advanceToNext(game.direction,0)
-        return
-      }
-      // Otherwise stay on same player — they can try drawing again
-      renderHand(true)
+      // Doesn't match — automatically skip to next player
+      toast('Kortet passar inte — näste spelares tur!')
+      S.drawnThisTurn=0
+      await advanceToNext(game.direction,0)
       return
     }
   }

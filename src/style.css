@@ -127,25 +127,46 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Nunito
 
 /* Hand */
 .hand-area{flex-shrink:0;background:rgba(0,0,0,.28);border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom,0px)}
-.hand-top-row{display:flex;align-items:center;justify-content:space-between;padding:6px 12px 4px;gap:8px}
+.hand-top-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:6px 12px 4px;
+  gap:8px;
+  position:relative;
+}
 .hand-label{font-family:'Fredoka One',cursive;font-size:9px;letter-spacing:.3em;color:var(--muted);white-space:nowrap}
 .hand-actions{display:flex;align-items:center;gap:8px}
-.show-all-btn{font-family:'Fredoka One',cursive;font-size:12px;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:16px;padding:5px 12px;cursor:pointer;touch-action:manipulation;white-space:nowrap}
+/* "Visa alla" button — absolutely centered in the top row */
+.show-all-btn{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  font-family:'Fredoka One',cursive;
+  font-size:13px;
+  background:rgba(255,255,255,.12);
+  color:#fff;
+  border:1px solid rgba(255,255,255,.25);
+  border-radius:18px;
+  padding:6px 16px;
+  cursor:pointer;
+  touch-action:manipulation;
+  white-space:nowrap;
+  z-index:2;
+}
+.show-all-btn:active{background:rgba(255,255,255,.22)}
 .kulo-btn{font-family:'Fredoka One',cursive;font-size:14px;background:var(--accent);color:#fff;border:none;border-radius:22px;padding:7px 20px;cursor:pointer;box-shadow:0 3px 0 #c0392b;animation:kuloWiggle .5s ease infinite alternate;touch-action:manipulation;white-space:nowrap}
 @keyframes kuloWiggle{to{transform:scale(1.05)}}
-/* Hand scroll: fixed height so cards are fully visible, no clipping */
 .hand-scroll{
   display:flex;
   gap:6px;
   overflow-x:scroll;
   overflow-y:visible;
-  /* top padding = how much playable cards lift up (10px) + buffer */
   padding:14px 12px 10px;
   scrollbar-width:none;
   -webkit-overflow-scrolling:touch;
   overscroll-behavior-x:contain;
   touch-action:pan-x;
-  /* Enough height for card + lift */
   min-height:calc(var(--ch) + 28px);
   align-items:flex-end;
 }
