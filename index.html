@@ -12,67 +12,70 @@
 <body>
 <div id="app">
 
-  <!-- ── HOME ── -->
-  <div id="home-screen" class="screen active flex-col gap-16" style="justify-content:center">
-    <div class="flex-col gap-4">
-      <div class="logo">KULO</div>
-      <div class="tagline">kortspelet som faktiskt är kul</div>
-    </div>
+  <!-- HOME -->
+  <div id="home-screen" class="screen">
+    <div class="logo">KULO</div>
+    <div class="tagline">kortspelet som faktiskt är kul</div>
     <div class="home-actions">
       <button class="btn btn-primary" id="btn-create">🎮 Skapa spel</button>
       <button class="btn btn-secondary" id="btn-join">🔗 Gå med i spel</button>
     </div>
-    <div class="info-box" style="margin-top:8px">
-      <strong>Hur man spelar:</strong> Matcha färg eller nummer. Bli av med alla kort. Ropa <strong>"KULO!"</strong> när du har 1 kort kvar. Närmast 13 år börjar! 😄
+    <div class="info-box">
+      <strong>Hur man spelar:</strong> Matcha färg eller nummer. Bli av med alla kort.
+      Ropa <strong>"KULO!"</strong> när du har 1 kort kvar. Närmast 13 år börjar! 😄
     </div>
   </div>
 
-  <!-- ── SETUP ── -->
-  <div id="setup-screen" class="screen flex-col gap-12">
-    <div style="width:100%;max-width:320px;display:flex;align-items:center;gap:12px;margin-bottom:8px">
-      <button class="btn btn-outline btn-sm" id="btn-back-home" style="width:auto;padding:8px 16px">← Tillbaka</button>
-      <div class="logo-sm" id="setup-title">Skapa spel</div>
-    </div>
-    <div id="setup-mode" data-mode="create" style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:10px">
-      <div class="section-title">ditt namn</div>
+  <!-- SETUP -->
+  <div id="setup-screen" class="screen">
+    <button class="btn btn-outline btn-sm" id="btn-back-home" style="align-self:flex-start">← Tillbaka</button>
+    <div class="logo-sm" id="setup-title">Skapa spel</div>
+
+    <div id="setup-mode" data-mode="create" style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:12px">
+      <div class="field-label">Ditt namn</div>
       <input class="input" id="player-name" type="text" placeholder="Vad heter du?" maxlength="16" autocomplete="off" />
-      <div id="setup-code-row" style="display:none;flex-direction:column;gap:10px">
-        <div class="section-title">spelkod</div>
-        <input class="input" id="game-code" type="text" placeholder="T.ex. AB3X" maxlength="4" autocomplete="off" style="text-transform:uppercase;letter-spacing:0.3em;font-size:24px" />
+
+      <div id="setup-code-row" style="display:none;flex-direction:column;gap:8px">
+        <div class="field-label">Spelkod</div>
+        <input class="input" id="game-code" type="text" placeholder="T.ex. AB3X" maxlength="4" autocomplete="off"
+          style="text-transform:uppercase;letter-spacing:0.3em;font-size:24px;text-align:center" />
       </div>
-      <button class="btn btn-green" id="btn-enter" style="margin-top:8px">Kör! 🚀</button>
+
+      <div id="setup-players-row" style="display:flex;flex-direction:column;gap:8px">
+        <div class="field-label">Antal spelare <span style="color:rgba(255,255,255,0.4);font-size:12px">(spelet startar automatiskt)</span></div>
+        <div class="player-count-row">
+          <button class="count-btn" id="count-down">−</button>
+          <div class="count-display" id="count-display">4</div>
+          <button class="count-btn" id="count-up">+</button>
+        </div>
+      </div>
+
+      <button class="btn btn-green" id="btn-enter" style="margin-top:4px">Kör! 🚀</button>
     </div>
   </div>
 
-  <!-- ── LOBBY ── -->
-  <div id="lobby-screen" class="screen flex-col gap-12">
-    <div class="flex-col gap-4">
-      <div class="logo-sm">Lobby</div>
-      <div class="section-title">spelkod</div>
-      <div class="lobby-code" id="lobby-code">----</div>
-      <div class="tagline">Skanna QR eller dela koden</div>
-    </div>
+  <!-- LOBBY -->
+  <div id="lobby-screen" class="screen">
+    <div class="logo-sm">Lobby</div>
+    <div class="field-label" style="margin-top:4px">Spelkod</div>
+    <div class="lobby-code" id="lobby-code">----</div>
+    <div class="tagline">Skanna QR-koden för att joina</div>
     <div class="qr-wrapper"><canvas id="qr-canvas"></canvas></div>
-    <div class="section-title">spelare</div>
+    <div class="field-label">Spelare</div>
     <div class="player-list" id="lobby-players"></div>
-    <div class="waiting-text" id="lobby-waiting">Väntar på fler spelare...</div>
-    <button class="btn btn-green btn-disabled" id="btn-start-game" style="display:none">🚀 Starta spelet</button>
+    <div class="lobby-progress" id="lobby-progress"></div>
+    <div class="waiting-text" id="lobby-waiting">Väntar på spelare...</div>
+    <button class="btn btn-green" id="btn-start-game" style="display:none;margin-top:8px">🚀 Starta ändå</button>
   </div>
 
-  <!-- ── GAME ── -->
-  <div id="game-screen" class="screen">
-
-    <!-- Top bar -->
+  <!-- GAME -->
+  <div id="game-screen" class="screen" style="padding:0;justify-content:space-between;height:100vh;max-height:100vh;overflow:hidden;background:#0a1628">
     <div class="game-top">
-      <div class="logo-sm" style="font-size:22px;text-shadow:1px 1px 0 #e74c3c">KULO</div>
-      <div id="game-turn-label" style="font-family:'Fredoka One',cursive;font-size:14px;letter-spacing:0.05em;color:rgba(255,255,255,0.7)"></div>
-      <div id="active-color-ind" style="width:24px;height:24px;border-radius:50%;border:2px solid rgba(255,255,255,0.4);display:none"></div>
+      <div class="logo-sm" style="font-size:20px;text-shadow:1px 1px 0 #e74c3c">KULO</div>
+      <div id="game-turn-label" style="font-family:'Fredoka One',cursive;font-size:13px;color:rgba(255,255,255,0.7)"></div>
+      <div id="active-color-ind" style="width:22px;height:22px;border-radius:50%;border:2px solid rgba(255,255,255,0.35);display:none"></div>
     </div>
-
-    <!-- Opponents -->
     <div class="game-other-players" id="game-others"></div>
-
-    <!-- Play area -->
     <div class="play-area">
       <div class="status-banner waiting" id="status-banner">Laddar...</div>
       <div class="piles-row">
@@ -85,8 +88,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Hand -->
     <div class="hand-area">
       <div style="display:flex;align-items:center;gap:12px">
         <div class="hand-label">DIN HAND</div>
@@ -94,17 +95,14 @@
       </div>
       <div class="hand-cards" id="hand-cards"></div>
     </div>
-
   </div>
 
-  <!-- ── WINNER ── -->
-  <div id="winner-screen" class="screen flex-col gap-16" style="justify-content:center">
-    <div class="flex-col gap-8">
-      <div class="winner-emoji">🏆</div>
-      <div id="winner-is-you" style="display:none;font-family:'Fredoka One',cursive;font-size:18px;color:var(--gold)">Du vann!! 🎉</div>
-      <div class="winner-name" id="winner-name"></div>
-      <div style="color:var(--muted);font-size:14px">har inga kort kvar!</div>
-    </div>
+  <!-- WINNER -->
+  <div id="winner-screen" class="screen" style="justify-content:center">
+    <div class="winner-emoji">🏆</div>
+    <div id="winner-is-you" style="display:none;font-family:'Fredoka One',cursive;font-size:18px;color:#f39c12">Du vann!! 🎉</div>
+    <div class="winner-name" id="winner-name"></div>
+    <div style="color:rgba(255,255,255,0.4);font-size:14px;margin-bottom:24px">har inga kort kvar!</div>
     <div class="home-actions">
       <button class="btn btn-green" id="btn-play-again">🔄 Spela igen</button>
       <button class="btn btn-outline" id="btn-leave">🚪 Lämna spelet</button>
@@ -112,10 +110,7 @@
   </div>
 
 </div>
-
-<!-- Toast container -->
 <div class="toast-container" id="toast-container"></div>
-
 <script type="module" src="/src/main.js"></script>
 </body>
 </html>
