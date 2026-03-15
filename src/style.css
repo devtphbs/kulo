@@ -1,0 +1,450 @@
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface2: #21262d;
+  --border: rgba(255,255,255,0.08);
+  --text: #f0f0f0;
+  --muted: rgba(255,255,255,0.4);
+  --accent: #e74c3c;
+  --gold: #f39c12;
+  --green: #27ae60;
+  --card-w: 85px;
+  --card-h: 125px;
+  --card-w-lg: 110px;
+  --card-h-lg: 162px;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Nunito', sans-serif;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+#app { min-height: 100vh; display: flex; flex-direction: column; }
+
+/* ── Screens ── */
+.screen {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 24px 16px 40px;
+  animation: fadeIn 0.25s ease;
+}
+.screen.active { display: flex; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+
+/* ── Typography ── */
+.logo {
+  font-family: 'Fredoka One', cursive;
+  font-size: 72px;
+  letter-spacing: 0.15em;
+  color: #fff;
+  text-shadow: 3px 3px 0 #e74c3c, 6px 6px 0 #f39c12;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.logo-sm {
+  font-family: 'Fredoka One', cursive;
+  font-size: 36px;
+  letter-spacing: 0.12em;
+  color: #fff;
+  text-shadow: 2px 2px 0 #e74c3c;
+}
+.tagline { font-size: 13px; color: var(--muted); font-style: italic; letter-spacing: 0.2em; margin-bottom: 32px; }
+.section-title {
+  font-family: 'Fredoka One', cursive;
+  font-size: 12px;
+  letter-spacing: 0.4em;
+  color: var(--muted);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 14px 32px;
+  border: none; border-radius: 8px;
+  font-family: 'Fredoka One', cursive;
+  font-size: 18px; letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all 0.15s;
+  width: 100%; max-width: 320px;
+}
+.btn:active { transform: translateY(2px); }
+.btn-primary { background: var(--accent); color: #fff; box-shadow: 0 4px 0 #c0392b; }
+.btn-primary:active { box-shadow: 0 1px 0 #c0392b; }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-green { background: var(--green); color: #fff; box-shadow: 0 4px 0 #1e8449; }
+.btn-green:active { box-shadow: 0 1px 0 #1e8449; }
+.btn-gold { background: var(--gold); color: #fff; box-shadow: 0 4px 0 #ca8c0a; }
+.btn-gold:active { box-shadow: 0 1px 0 #ca8c0a; }
+.btn-sm { padding: 10px 20px; font-size: 14px; max-width: 200px; }
+.btn-outline { background: transparent; border: 2px solid var(--border); color: var(--muted); }
+.btn-disabled { opacity: 0.4; pointer-events: none; }
+
+/* ── Input ── */
+.input {
+  width: 100%; max-width: 320px;
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 18px; font-weight: 700;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+  text-align: center;
+}
+.input:focus { border-color: var(--accent); }
+.input::placeholder { color: var(--muted); font-weight: 400; }
+
+/* ── Card component ── */
+.card {
+  width: var(--card-w);
+  height: var(--card-h);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,0.2);
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  display: flex;
+}
+.card.lg { width: var(--card-w-lg); height: var(--card-h-lg); }
+.card.unplayable { opacity: 0.45; cursor: not-allowed; }
+.card.unplayable:active { transform: none; }
+.card:not(.unplayable):active { transform: scale(0.96); }
+.card.selected { transform: translateY(-16px); box-shadow: 0 16px 32px rgba(0,0,0,0.5); border-color: rgba(255,255,255,0.7); }
+.card.played {
+  animation: playCard 0.3s ease forwards;
+}
+@keyframes playCard {
+  to { transform: scale(0) rotate(20deg); opacity: 0; }
+}
+
+.card-frame {
+  position: absolute; inset: 5px; border-radius: 5px;
+  border: 1.5px solid rgba(255,255,255,0.25); pointer-events: none;
+}
+.card-oval {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%,-50%) rotate(-20deg);
+  width: 75%; height: 50%; border-radius: 50%;
+  background: rgba(0,0,0,0.18); pointer-events: none;
+}
+.card-tl { position: absolute; top: 6px; left: 7px; line-height: 1; }
+.card-br { position: absolute; bottom: 6px; right: 7px; line-height: 1; transform: rotate(180deg); }
+.card-corner-num {
+  font-family: 'Fredoka One', cursive;
+  font-size: 18px; color: #fff;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.5); line-height: 1; display: block;
+}
+.card-corner-num.sm { font-size: 9px; line-height: 1.2; }
+.card-center {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  text-align: center; width: 78%;
+}
+.card-big-num {
+  font-family: 'Fredoka One', cursive;
+  font-size: 52px; color: #fff;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.2); line-height: 1;
+}
+.card.lg .card-big-num { font-size: 68px; }
+.card-big-label {
+  font-family: 'Fredoka One', cursive;
+  font-size: 13px; color: #fff;
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.3); line-height: 1.2;
+}
+.card.lg .card-big-label { font-size: 16px; }
+.card-funny {
+  font-size: 6.5px; font-style: italic; font-weight: 700;
+  color: rgba(255,255,255,0.8); margin-top: 4px; line-height: 1.3;
+}
+.card-strip {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 16px;
+  background: rgba(0,0,0,0.28);
+  display: flex; align-items: center; justify-content: center;
+}
+.card-strip span {
+  font-family: 'Fredoka One', cursive;
+  font-size: 6.5px; letter-spacing: 0.25em; color: rgba(255,255,255,0.65);
+}
+
+/* Wild card background */
+.wild-gradient {
+  background: conic-gradient(
+    #e74c3c 0deg 40deg, #e67e22 40deg 80deg, #d4ac0d 80deg 120deg,
+    #27ae60 120deg 160deg, #1abc9c 160deg 200deg, #2980b9 200deg 240deg,
+    #8e44ad 240deg 280deg, #e91e8c 280deg 320deg, #e74c3c 320deg 360deg
+  );
+}
+
+/* Back of card */
+.card-back {
+  background: #0c2030;
+  border: 2px solid #1a4a6a;
+}
+.card-back-inner {
+  position: absolute; inset: 5px; border-radius: 5px; border: 1px solid #1a4a6a;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(255,255,255,0.03) 5px, rgba(255,255,255,0.03) 6px);
+}
+.card-back-title { font-family: 'Fredoka One', cursive; font-size: 14px; letter-spacing: 0.3em; color: rgba(255,255,255,0.4); }
+.card-back-sub { font-size: 8px; letter-spacing: 0.2em; color: rgba(255,255,255,0.2); font-style: italic; }
+
+/* ── Home screen ── */
+.home-actions { display: flex; flex-direction: column; gap: 12px; align-items: center; width: 100%; }
+
+/* ── Lobby screen ── */
+.lobby-code {
+  font-family: 'Fredoka One', cursive;
+  font-size: 52px; letter-spacing: 0.25em; color: var(--gold);
+  text-shadow: 0 0 30px rgba(243,156,18,0.4);
+}
+.qr-wrapper {
+  background: #fff; border-radius: 12px; padding: 16px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 12px 0;
+}
+.player-list {
+  width: 100%; max-width: 360px;
+  display: flex; flex-direction: column; gap: 8px;
+  margin: 12px 0;
+}
+.player-item {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+  font-weight: 800; font-size: 16px;
+  animation: slideIn 0.2s ease;
+}
+@keyframes slideIn { from { opacity:0; transform:translateX(-10px); } to { opacity:1; transform:none; } }
+.player-item .host-badge {
+  font-size: 10px; letter-spacing: 0.2em;
+  background: var(--gold); color: #000;
+  border-radius: 4px; padding: 2px 6px;
+  font-family: 'Fredoka One', cursive;
+}
+.player-item .you-badge {
+  font-size: 10px; letter-spacing: 0.2em;
+  background: var(--surface);
+  color: var(--muted);
+  border-radius: 4px; padding: 2px 6px;
+  font-family: 'Fredoka One', cursive;
+}
+.waiting-text { font-size: 14px; color: var(--muted); font-style: italic; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:0.9} }
+
+/* ── Game screen ── */
+#game-screen {
+  padding: 0;
+  overflow: hidden;
+  height: 100vh;
+  max-height: 100vh;
+  justify-content: space-between;
+  background: #0a1628;
+}
+
+.game-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px 6px;
+  background: rgba(0,0,0,0.3);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.game-other-players {
+  display: flex; gap: 8px; overflow-x: auto; padding: 8px 12px;
+  flex-shrink: 0;
+  scrollbar-width: none;
+}
+.game-other-players::-webkit-scrollbar { display: none; }
+
+.opponent-block {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  min-width: 56px; flex-shrink: 0;
+  padding: 6px 8px; border-radius: 8px;
+  border: 1.5px solid transparent;
+  transition: border-color 0.2s, background 0.2s;
+}
+.opponent-block.active-turn {
+  border-color: var(--gold);
+  background: rgba(243,156,18,0.1);
+  animation: glow 1s ease infinite alternate;
+}
+@keyframes glow { to { box-shadow: 0 0 12px rgba(243,156,18,0.4); } }
+.opponent-name { font-size: 10px; font-weight: 800; color: var(--text); text-align: center; max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.opponent-cards { font-size: 11px; font-weight: 900; color: var(--muted); }
+.opponent-kulo { font-size: 9px; color: var(--accent); font-weight: 900; letter-spacing: 0.1em; }
+.opponent-frozen { font-size: 9px; color: #2980b9; }
+
+/* Mini card stack visualization */
+.mini-cards {
+  display: flex; position: relative; height: 28px; width: 100%;
+  justify-content: center;
+}
+.mini-card {
+  width: 18px; height: 26px; border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.3);
+  position: absolute;
+}
+
+/* Center play area */
+.play-area {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 12px; padding: 8px;
+  position: relative;
+}
+
+.piles-row {
+  display: flex; align-items: center; justify-content: center; gap: 24px;
+}
+
+.draw-pile-btn {
+  cursor: pointer;
+  transition: transform 0.15s;
+  position: relative;
+}
+.draw-pile-btn:active { transform: scale(0.95); }
+.draw-pile-btn .draw-label {
+  position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%);
+  font-size: 10px; color: var(--muted); white-space: nowrap;
+  font-family: 'Fredoka One', cursive; letter-spacing: 0.1em;
+}
+
+.top-card-area { position: relative; }
+.top-card-glow {
+  position: absolute; inset: -8px; border-radius: 14px;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.15), transparent);
+  pointer-events: none;
+}
+
+.status-banner {
+  font-family: 'Fredoka One', cursive;
+  font-size: 14px; letter-spacing: 0.08em;
+  padding: 6px 16px; border-radius: 20px;
+  text-align: center;
+}
+.status-banner.your-turn { background: rgba(39,174,96,0.25); color: #2ecc71; border: 1px solid rgba(39,174,96,0.4); }
+.status-banner.waiting { background: rgba(255,255,255,0.06); color: var(--muted); }
+.status-banner.frozen { background: rgba(41,128,185,0.25); color: #3498db; border: 1px solid rgba(41,128,185,0.4); }
+
+/* Your hand */
+.hand-area {
+  flex-shrink: 0;
+  padding: 8px 0 12px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: rgba(0,0,0,0.25);
+  border-top: 1px solid var(--border);
+}
+
+.hand-label {
+  font-family: 'Fredoka One', cursive;
+  font-size: 10px; letter-spacing: 0.3em; color: var(--muted);
+}
+
+.hand-cards {
+  display: flex; gap: 6px; overflow-x: auto; padding: 4px 12px 4px;
+  max-width: 100vw; scrollbar-width: none;
+}
+.hand-cards::-webkit-scrollbar { display: none; }
+
+.kulo-btn {
+  font-family: 'Fredoka One', cursive;
+  font-size: 15px; letter-spacing: 0.1em;
+  background: var(--accent); color: #fff;
+  border: none; border-radius: 20px;
+  padding: 8px 28px; cursor: pointer;
+  box-shadow: 0 3px 0 #c0392b;
+  transition: all 0.15s;
+  animation: kuloWiggle 0.5s ease infinite alternate;
+}
+.kulo-btn:active { transform: scale(0.95); box-shadow: 0 1px 0 #c0392b; }
+@keyframes kuloWiggle { to { transform: scale(1.04); } }
+
+/* Color picker overlay */
+.color-picker-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.75);
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeIn 0.15s ease;
+}
+.color-picker-box {
+  background: var(--surface); border-radius: 16px;
+  padding: 24px; display: flex; flex-direction: column; gap: 16px;
+  align-items: center; border: 1px solid var(--border);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+.color-picker-box h3 { font-family: 'Fredoka One', cursive; font-size: 18px; }
+.color-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.color-btn {
+  width: 70px; height: 70px; border-radius: 12px;
+  border: 3px solid rgba(255,255,255,0.2);
+  cursor: pointer; transition: transform 0.15s, border-color 0.15s;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fredoka One', cursive; font-size: 11px;
+  letter-spacing: 0.05em; color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+.color-btn:active { transform: scale(0.93); border-color: rgba(255,255,255,0.7); }
+
+/* Target picker */
+.target-picker-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.75); display: flex; align-items: center; justify-content: center; }
+.target-picker-box { background: var(--surface); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 12px; align-items: center; min-width: 240px; border: 1px solid var(--border); }
+.target-btn { width: 100%; padding: 12px 20px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: 'Fredoka One', cursive; font-size: 16px; cursor: pointer; transition: background 0.15s; }
+.target-btn:active { background: var(--accent); }
+
+/* Winner screen */
+.winner-emoji { font-size: 80px; margin: 16px 0; animation: bounce 0.6s ease infinite alternate; }
+@keyframes bounce { to { transform: translateY(-12px); } }
+.winner-name { font-family: 'Fredoka One', cursive; font-size: 36px; color: var(--gold); text-shadow: 0 0 20px rgba(243,156,18,0.5); }
+
+/* Toast notification */
+.toast-container { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.toast {
+  background: rgba(20,20,30,0.95); color: #fff;
+  padding: 10px 20px; border-radius: 20px;
+  font-family: 'Fredoka One', cursive; font-size: 14px; letter-spacing: 0.05em;
+  border: 1px solid rgba(255,255,255,0.15);
+  animation: toastIn 0.25s ease, toastOut 0.3s ease 2.7s forwards;
+  white-space: nowrap; backdrop-filter: blur(8px);
+}
+@keyframes toastIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
+@keyframes toastOut { to { opacity:0; transform:translateY(-8px); } }
+
+/* Info box */
+.info-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; width: 100%; max-width: 360px; font-size: 14px; line-height: 1.6; color: var(--muted); }
+.info-box strong { color: var(--text); }
+
+/* Divider */
+.divider { width: 100%; max-width: 320px; height: 1px; background: var(--border); margin: 4px 0; }
+
+/* Spinner */
+.spinner { width: 40px; height: 40px; border-radius: 50%; border: 3px solid var(--border); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Gap utilities */
+.gap-4 { gap: 4px; }
+.gap-8 { gap: 8px; }
+.gap-12 { gap: 12px; }
+.gap-16 { gap: 16px; }
+.mt-8 { margin-top: 8px; }
+.mt-16 { margin-top: 16px; }
+.w-full { width: 100%; max-width: 320px; }
+.text-center { text-align: center; }
+.flex-col { display: flex; flex-direction: column; align-items: center; }
