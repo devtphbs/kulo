@@ -192,3 +192,41 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Nunito
 .toast{background:rgba(12,12,22,.95);color:#fff;padding:9px 20px;border-radius:22px;font-family:'Fredoka One',cursive;font-size:13px;letter-spacing:.04em;border:1px solid rgba(255,255,255,.12);animation:toastIn .2s ease,toastOut .3s ease 2.7s forwards;white-space:nowrap;backdrop-filter:blur(8px)}
 @keyframes toastIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
 @keyframes toastOut{to{opacity:0;transform:translateY(-8px)}}
+
+/* ── Timer fixed bottom right ── */
+.turn-timer-fixed {
+  position: fixed;
+  bottom: 100px;
+  right: 14px;
+  z-index: 50;
+  font-family: 'Fredoka One', cursive;
+  font-size: 28px;
+  color: rgba(255,255,255,0.7);
+  background: rgba(0,0,0,0.5);
+  border-radius: 12px;
+  padding: 6px 14px;
+  min-width: 64px;
+  text-align: center;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+  border: 1.5px solid rgba(255,255,255,0.1);
+  transition: color 0.3s;
+}
+.turn-timer-fixed:empty { display: none; }
+.turn-timer-fixed.warning { color: #f39c12; border-color: rgba(243,156,18,0.4); }
+.turn-timer-fixed.danger { color: #e74c3c; border-color: rgba(231,76,60,0.5); animation: timerPulse .25s ease infinite alternate; }
+@keyframes timerPulse { to { transform: scale(1.08); } }
+
+/* ── Mute button ── */
+.mute-btn {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 18px;
+  padding: 6px 10px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s;
+}
+.mute-btn:active { background: rgba(255,255,255,0.18); }

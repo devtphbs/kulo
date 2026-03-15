@@ -21,7 +21,8 @@
       <button class="btn btn-secondary" id="btn-join">🔗 Gå med i spel</button>
     </div>
     <div class="info-box">
-      Matcha <strong>färg</strong> eller <strong>nummer</strong>. Bli av med alla kort. Ropa <strong>"KULO!"</strong> med 1 kort kvar. Närmast 13 år börjar! 😄
+      Matcha <strong>färg</strong> eller <strong>nummer</strong>. Bli av med alla kort.
+      Ropa <strong>"KULO!"</strong> med 1 kort kvar. Närmast 13 år börjar! 😄
     </div>
   </div>
 
@@ -49,8 +50,8 @@
       <div class="field" id="setup-color-row">
         <label class="field-label">Kortutseende</label>
         <div class="toggle-row">
-          <button class="toggle-btn active" id="mode-color" data-mode="color">🎨 Färg</button>
-          <button class="toggle-btn" id="mode-bw" data-mode="bw">🖤 Svartvitt</button>
+          <button class="toggle-btn active" id="mode-color">🎨 Färg</button>
+          <button class="toggle-btn" id="mode-bw">🖤 Svartvitt</button>
         </div>
       </div>
       <button class="btn btn-green" id="btn-enter">Kör! 🚀</button>
@@ -82,53 +83,50 @@
       </div>
       <div class="rules-section">
         <div class="rules-head">🔄 Din tur</div>
-        <p>Lägg ett kort som matchar <strong>färgen</strong> eller <strong>numret</strong> på toppkortet. Passar inget? Dra ett kort.</p>
+        <p>Lägg ett kort som matchar <strong>färgen</strong> eller <strong>numret</strong>. Passar inget? Dra ett kort. Kan du lägga det direkt? Gör det. Annars är det näste spelares tur.</p>
       </div>
       <div class="rules-section">
         <div class="rules-head">🔔 KULO-ropet</div>
-        <p>Har du <strong>1 kort kvar</strong> — tryck på KULO-knappen! Glömmer du och någon påpekar det: dra 2 straffkort.</p>
+        <p>Har du <strong>1 kort kvar</strong> — tryck på KULO-knappen! Glömmer du det och någon ser det: dra 2 straffkort.</p>
       </div>
       <div class="rules-section">
         <div class="rules-head">⚡ Specialkort</div>
         <div class="rules-cards">
           <div class="rules-card"><span class="rc-name">Hoppa Över</span><span class="rc-desc">Näste missar sin tur</span></div>
           <div class="rules-card"><span class="rc-name">Vänd</span><span class="rc-desc">Riktningen byter håll</span></div>
-          <div class="rules-card"><span class="rc-name">Dra 2</span><span class="rc-desc">Näste drar 2 kort</span></div>
+          <div class="rules-card"><span class="rc-name">Dra 2</span><span class="rc-desc">Näste drar 2 kort automatiskt</span></div>
           <div class="rules-card"><span class="rc-name">Dra 4 ★</span><span class="rc-desc">Välj färg + näste drar 4</span></div>
           <div class="rules-card"><span class="rc-name">Byt Färg ★</span><span class="rc-desc">Välj ny aktiv färg</span></div>
-          <div class="rules-card"><span class="rc-name">Frys</span><span class="rc-desc">Näste hoppar 2 turer</span></div>
+          <div class="rules-card"><span class="rc-name">Frys</span><span class="rc-desc">Näste hoppar 2 turer (ej vid 2 spelare)</span></div>
           <div class="rules-card"><span class="rc-name">Ge Bort</span><span class="rc-desc">Ge 3 kort till en spelare</span></div>
           <div class="rules-card"><span class="rc-name">Stjäl</span><span class="rc-desc">Ta ett kort från en spelare</span></div>
-          <div class="rules-card"><span class="rc-name">Byt Hand</span><span class="rc-desc">Byt hela handen</span></div>
+          <div class="rules-card"><span class="rc-name">Byt Hand</span><span class="rc-desc">Byt hela handen med någon</span></div>
         </div>
       </div>
       <div class="rules-section">
         <div class="rules-head">⏱️ Tidsgräns</div>
-        <p>Du har <strong>60 sekunder</strong> på dig att lägga ett kort. Annars åker du ut!</p>
+        <p>Du har <strong>60 sekunder</strong> på din tur (timer syns nere till höger). Tar tiden slut går turen vidare automatiskt.</p>
       </div>
     </div>
     <div class="rules-footer">
       <div class="rules-confirmed" id="rules-confirmed-list"></div>
       <button class="btn btn-green" id="btn-rules-ok">✅ Förstår!</button>
-      <div class="muted" style="font-size:12px;text-align:center" id="rules-wait-text">Väntar på att alla trycker Förstår...</div>
+      <div class="muted" style="font-size:12px;text-align:center" id="rules-wait-text"></div>
     </div>
   </div>
 
   <!-- GAME -->
   <div id="game-screen" class="screen game-layout">
-    <!-- Top bar -->
     <div class="game-top">
       <div class="game-logo">KULO</div>
-      <div id="turn-timer" class="turn-timer"></div>
-      <div id="active-color-dot" class="color-dot" style="display:none"></div>
+      <div id="status-banner" class="status-banner waiting">...</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div id="active-color-dot" class="color-dot" style="display:none"></div>
+        <button id="mute-btn" class="mute-btn">🔊</button>
+      </div>
     </div>
-
-    <!-- Opponents row -->
     <div class="opponents-row" id="game-others"></div>
-
-    <!-- Play area -->
     <div class="play-area">
-      <div class="status-banner waiting" id="status-banner">...</div>
       <div class="piles-row">
         <div class="pile-wrap" id="draw-pile-slot">
           <div class="pile-label">Dra kort</div>
@@ -136,8 +134,6 @@
         <div class="pile-wrap" id="top-card-slot"></div>
       </div>
     </div>
-
-    <!-- Hand -->
     <div class="hand-area">
       <div class="hand-top-row">
         <span class="hand-label">DIN HAND</span>
@@ -145,11 +141,13 @@
       </div>
       <div class="hand-scroll" id="hand-cards"></div>
     </div>
+    <!-- Timer bottom right -->
+    <div id="turn-timer" class="turn-timer-fixed"></div>
   </div>
 
   <!-- WINNER -->
   <div id="winner-screen" class="screen" style="justify-content:center">
-    <div style="font-size:80px;animation:bounce 0.6s ease infinite alternate">🏆</div>
+    <div style="font-size:80px;animation:bounce .6s ease infinite alternate">🏆</div>
     <div id="winner-you" style="display:none;font-family:'Fredoka One',cursive;font-size:20px;color:#f39c12">Du vann!! 🎉</div>
     <div class="winner-name" id="winner-name"></div>
     <div class="muted">har inga kort kvar!</div>
@@ -161,7 +159,7 @@
 
 </div>
 
-<!-- Color picker popup -->
+<!-- Color picker -->
 <div id="color-picker" class="popup-overlay" style="display:none">
   <div class="popup-box">
     <div class="popup-title">Välj färg 🎨</div>
@@ -169,7 +167,7 @@
   </div>
 </div>
 
-<!-- Target picker popup -->
+<!-- Target picker -->
 <div id="target-picker" class="popup-overlay" style="display:none">
   <div class="popup-box">
     <div class="popup-title" id="target-title">Välj spelare</div>
@@ -177,10 +175,10 @@
   </div>
 </div>
 
-<!-- Draw notification popup -->
+<!-- Draw notification -->
 <div id="draw-notif" class="draw-notif" style="display:none"></div>
 
-<!-- Toast -->
+<!-- Toasts -->
 <div id="toasts"></div>
 
 <script type="module" src="/src/main.js"></script>

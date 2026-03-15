@@ -9,15 +9,15 @@ const S={
   gameId:null,playerId:null,playerName:null,isHost:false,
   game:null,players:[],myHand:[],selectedCard:null,
   subscription:null,maxPlayers:4,colorMode:'color',
-  timerInterval:null,timerSec:60,
+  timerInterval:null,timerSec:60,muted:false,
+  audioCtx:null,musicInterval:null,
 }
 
 // ── Screens ───────────────────────────────────────────────────
 function show(name){
   document.querySelectorAll('.screen').forEach(s=>{s.style.display='none'})
   const el=document.getElementById(name+'-screen')
-  if(el)el.style.display='flex'
-  if(name==='game')el.style.cssText+='flex-direction:column!important'
+  if(el){el.style.display='flex';if(name==='game')el.style.cssText+='flex-direction:column!important'}
 }
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -27,44 +27,98 @@ function toast(msg){
   const t=document.createElement('div');t.className='toast';t.textContent=msg
   c.appendChild(t);setTimeout(()=>t.remove(),3200)
 }
-function myTurn(){
-  if(!S.game||!S.players.length)return false
-  return S.players[S.game.current_player_index]?.id===S.playerId
-}
+function myTurn(){if(!S.game||!S.players.length)return false;return S.players[S.game.current_player_index]?.id===S.playerId}
 function isFrozen(){return((S.game?.frozen_turns||{})[S.playerId]||0)>0}
 function bwMode(){return S.game?.color_mode==='bw'}
+function is2Player(){return S.players.length===2}
+
+// ── 🎵 Kahoot-style music ─────────────────────────────────────
+function initAudio(){
+  if(S.audioCtx)return
+  S.audioCtx=new(window.AudioContext||window.webkitAudioContext)()
+}
+
+function playNote(freq,start,dur,vol=0.18){
+  if(S.muted||!S.audioCtx)return
+  const osc=S.audioCtx.createOscillator()
+  const gain=S.audioCtx.createGain()
+  osc.connect(gain);gain.connect(S.audioCtx.destination)
+  osc.type='square'
+  osc.frequency.setValueAtTime(freq,S.audioCtx.currentTime+start)
+  gain.gain.setValueAtTime(0,S.audioCtx.currentTime+start)
+  gain.gain.linearRampToValueAtTime(vol,S.audioCtx.currentTime+start+0.01)
+  gain.gain.exponentialRampToValueAtTime(0.001,S.audioCtx.currentTime+start+dur)
+  osc.start(S.audioCtx.currentTime+start)
+  osc.stop(S.audioCtx.currentTime+start+dur+0.05)
+}
+
+// Kahoot-inspired melody loop
+const MELODY=[
+  [659,0,.18],[523,.25,.18],[587,.5,.18],[698,.75,.18],
+  [659,1.0,.18],[523,1.25,.18],[494,1.5,.35],
+  [523,2.0,.18],[587,2.25,.18],[659,2.5,.18],[784,2.75,.18],
+  [880,3.0,.35],[784,3.5,.18],[698,3.75,.18],
+  [659,4.0,.18],[523,4.25,.18],[587,4.5,.18],[698,4.75,.18],
+  [659,5.0,.18],[494,5.25,.18],[440,5.5,.35],
+  [392,6.0,.18],[440,6.25,.18],[494,6.5,.18],[523,6.75,.18],
+  [587,7.0,.35],[523,7.5,.18],[494,7.75,.18],
+]
+const LOOP_DUR=8.2
+
+function startMusic(){
+  if(S.muted||!S.audioCtx)return
+  stopMusic()
+  function playLoop(){
+    if(S.muted)return
+    MELODY.forEach(([f,t,d])=>playNote(f,t,d))
+    S.musicTimeout=setTimeout(playLoop,LOOP_DUR*1000)
+  }
+  playLoop()
+}
+function stopMusic(){
+  clearTimeout(S.musicTimeout)
+}
+function toggleMute(){
+  S.muted=!S.muted
+  const btn=document.getElementById('mute-btn')
+  btn.textContent=S.muted?'🔇':'🔊'
+  if(!S.muted){initAudio();startMusic()}
+  else stopMusic()
+}
 
 // ── Draw notification ─────────────────────────────────────────
 function showDrawNotif(msg){
   const el=document.getElementById('draw-notif')
-  el.textContent=msg;el.style.display='block'
-  clearTimeout(el._t)
-  el._t=setTimeout(()=>{el.style.display='none'},5000)
+  el.innerHTML=msg;el.style.display='block'
+  clearTimeout(el._t);el._t=setTimeout(()=>{el.style.display='none'},5000)
 }
 
 // ── Turn timer ────────────────────────────────────────────────
 function startTimer(){
   clearInterval(S.timerInterval)
   S.timerSec=60
-  updateTimerDisplay()
+  renderTimerDisplay()
   S.timerInterval=setInterval(async()=>{
     S.timerSec--
-    updateTimerDisplay()
+    renderTimerDisplay()
     if(S.timerSec<=0){
       clearInterval(S.timerInterval)
-      toast('Du tog för lång tid! Du åker ut 😬')
-      await kickPlayer(S.playerId)
+      toast('Tiden är ute! Näste spelares tur ⏱️')
+      // Just advance turn, don't kick
+      await advanceToNext(S.game?.direction,0)
     }
   },1000)
 }
-function stopTimer(){clearInterval(S.timerInterval);document.getElementById('turn-timer').textContent=''}
-function updateTimerDisplay(){
+function stopTimer(){
+  clearInterval(S.timerInterval)
   const el=document.getElementById('turn-timer')
+  if(el)el.textContent=''
+}
+function renderTimerDisplay(){
+  const el=document.getElementById('turn-timer')
+  if(!el)return
   el.textContent=S.timerSec+'s'
   el.className='turn-timer'+(S.timerSec<=15?' warning':'')+(S.timerSec<=5?' danger':'')
-}
-async function kickPlayer(pid){
-  await supabase.from('players').delete().eq('id',pid)
 }
 
 // ── DB ────────────────────────────────────────────────────────
@@ -91,34 +145,32 @@ function subscribe(gameId){
 
 async function onUpdate(){
   if(!S.game)return
-  const status=S.game.status
-  if(status==='lobby'){
+  const st=S.game.status
+  if(st==='lobby'){
     renderLobby()
     if(S.game.max_players>0&&S.players.length>=S.game.max_players&&S.isHost){
       toast('Alla är här! Startar... 🚀')
       setTimeout(()=>startGame(),800)
     }
-  } else if(status==='rules'){
+  } else if(st==='rules'){
     renderRules()
-  } else if(status==='playing'){
+  } else if(st==='playing'){
     show('game')
-    // Check if I just got forced to draw
+    // Check forced draw notification
     const la=S.game.last_action
-    if(la&&la.type==='draw'&&la.target===S.playerId&&!la.seen_by?.includes(S.playerId)){
+    if(la&&la.type==='draw'&&la.target===S.playerId&&!(la.seen_by||[]).includes(S.playerId)){
       const actor=S.players.find(p=>p.id===la.by)
-      showDrawNotif((actor?.name||'Någon')+' lade ett '+la.card+'-kort!\nDu fick '+la.count+' nya kort från kortbunten. 🃏')
-      // Mark as seen
+      showDrawNotif('<b>'+(actor?.name||'Någon')+'</b> lade ett <b>'+la.card+'</b>-kort!<br>Du fick <b>'+la.count+' nya kort</b> från kortbunten. 🃏')
       const seen=[...(la.seen_by||[]),S.playerId]
       await updateGame(S.gameId,{last_action:{...la,seen_by:seen}})
-      // Auto draw cards
-      await doDraw(la.count)
+      await doDraw(la.count,false,true) // forced, no advance
       return
     }
-    // Timer
-    if(myTurn()&&!isFrozen()){startTimer()}else{stopTimer()}
+    if(myTurn()&&!isFrozen())startTimer()
+    else stopTimer()
     renderGame()
-  } else if(status==='finished'){
-    stopTimer();renderWinner()
+  } else if(st==='finished'){
+    stopTimer();stopMusic();renderWinner()
   }
 }
 
@@ -154,11 +206,7 @@ document.getElementById('count-down').addEventListener('click',()=>{if(pickedPla
 document.getElementById('count-up').addEventListener('click',()=>{if(pickedPlayers<6){pickedPlayers++;document.getElementById('count-display').textContent=pickedPlayers}})
 document.getElementById('mode-color').addEventListener('click',()=>setColorMode('color'))
 document.getElementById('mode-bw').addEventListener('click',()=>setColorMode('bw'))
-function setColorMode(m){
-  pickedColorMode=m
-  document.getElementById('mode-color').classList.toggle('active',m==='color')
-  document.getElementById('mode-bw').classList.toggle('active',m==='bw')
-}
+function setColorMode(m){pickedColorMode=m;document.getElementById('mode-color').classList.toggle('active',m==='color');document.getElementById('mode-bw').classList.toggle('active',m==='bw')}
 
 document.getElementById('btn-enter').addEventListener('click',async()=>{
   const mode=document.getElementById('setup-mode').dataset.mode
@@ -166,39 +214,30 @@ document.getElementById('btn-enter').addEventListener('click',async()=>{
   const code=document.getElementById('game-code').value.trim().toUpperCase()
   if(!name){toast('Skriv in ditt namn! 😅');return}
   if(mode==='join'&&!code){toast('Skriv in spelkoden! 🎮');return}
-  const btn=document.getElementById('btn-enter')
-  btn.disabled=true;btn.textContent='Laddar...'
-  try{
-    if(mode==='create')await createGame(name)
-    else await joinGame(name,code)
-  }catch(e){console.error(e);toast('Något gick fel 😬');btn.disabled=false;btn.textContent='Kör! 🚀'}
+  const btn=document.getElementById('btn-enter');btn.disabled=true;btn.textContent='Laddar...'
+  try{if(mode==='create')await createGame(name);else await joinGame(name,code)}
+  catch(e){console.error(e);toast('Något gick fel 😬');btn.disabled=false;btn.textContent='Kör! 🚀'}
 })
 
 async function createGame(name){
   const gameId=genId(4),playerId=genId(10)
-  await supabase.from('games').insert({
-    id:gameId,host_id:playerId,status:'lobby',
-    current_player_index:0,direction:1,
-    draw_pile:[],discard_pile:[],frozen_turns:{},pending_draw:0,
-    max_players:pickedPlayers,color_mode:pickedColorMode,last_action:null,
-  })
+  await supabase.from('games').insert({id:gameId,host_id:playerId,status:'lobby',current_player_index:0,direction:1,draw_pile:[],discard_pile:[],frozen_turns:{},pending_draw:0,max_players:pickedPlayers,color_mode:pickedColorMode,last_action:null})
   await supabase.from('players').insert({id:playerId,game_id:gameId,name,hand:[],is_host:true,turn_order:0,kulo_called:false,rules_ok:false})
-  S.playerId=playerId;S.playerName=name;S.gameId=gameId;S.isHost=true;S.myHand=[]
-  S.colorMode=pickedColorMode
+  S.playerId=playerId;S.playerName=name;S.gameId=gameId;S.isHost=true;S.myHand=[];S.colorMode=pickedColorMode
   S.game=await getGame(gameId);S.players=await getPlayers(gameId)
   subscribe(gameId);show('lobby');renderLobby()
 }
 
 async function joinGame(name,code){
   const game=await getGame(code)
-  if(!game){toast('Hittade inget spel! 🤔');document.getElementById('btn-enter').disabled=false;document.getElementById('btn-enter').textContent='Kör! 🚀';return}
-  if(game.status!=='lobby'){toast('Spelet har startat! 🎮');document.getElementById('btn-enter').disabled=false;document.getElementById('btn-enter').textContent='Kör! 🚀';return}
+  const resetBtn=()=>{document.getElementById('btn-enter').disabled=false;document.getElementById('btn-enter').textContent='Kör! 🚀'}
+  if(!game){toast('Hittade inget spel! 🤔');resetBtn();return}
+  if(game.status!=='lobby'){toast('Spelet har startat! 🎮');resetBtn();return}
   const players=await getPlayers(code)
-  if(players.length>=6){toast('Fullt! Max 6 spelare 😅');document.getElementById('btn-enter').disabled=false;document.getElementById('btn-enter').textContent='Kör! 🚀';return}
+  if(players.length>=6){toast('Fullt! Max 6 spelare 😅');resetBtn();return}
   const playerId=genId(10)
   await supabase.from('players').insert({id:playerId,game_id:code,name,hand:[],is_host:false,turn_order:players.length,kulo_called:false,rules_ok:false})
-  S.playerId=playerId;S.playerName=name;S.gameId=code;S.isHost=false;S.myHand=[]
-  S.colorMode=game.color_mode||'color'
+  S.playerId=playerId;S.playerName=name;S.gameId=code;S.isHost=false;S.myHand=[];S.colorMode=game.color_mode||'color'
   S.game=game;S.players=await getPlayers(code)
   subscribe(code);show('lobby');renderLobby()
 }
@@ -207,8 +246,7 @@ async function joinGame(name,code){
 async function renderLobby(){
   show('lobby')
   document.getElementById('lobby-code').textContent=S.gameId
-  const joinUrl=window.location.origin+'?join='+S.gameId
-  try{await QRCode.toCanvas(document.getElementById('qr-canvas'),joinUrl,{width:180,margin:1,color:{dark:'#000',light:'#fff'}})}catch(e){}
+  try{await QRCode.toCanvas(document.getElementById('qr-canvas'),window.location.origin+'?join='+S.gameId,{width:180,margin:1,color:{dark:'#000',light:'#fff'}})}catch(e){}
   const list=document.getElementById('lobby-players');list.innerHTML=''
   S.players.forEach(p=>{
     const d=document.createElement('div');d.className='player-item'
@@ -217,83 +255,58 @@ async function renderLobby(){
   })
   const max=S.game?.max_players||0,cur=S.players.length
   const pw=document.getElementById('progress-wrap')
-  if(max>0){
-    pw.style.display='flex'
-    document.getElementById('progress-fill').style.width=Math.min(100,(cur/max)*100)+'%'
-    document.getElementById('progress-text').textContent=cur+' / '+max+' spelare'
-  }else{pw.style.display='none'}
+  if(max>0){pw.style.display='flex';document.getElementById('progress-fill').style.width=Math.min(100,cur/max*100)+'%';document.getElementById('progress-text').textContent=cur+' / '+max+' spelare'}
+  else pw.style.display='none'
   document.getElementById('lobby-waiting').textContent=max>0&&cur>=max?'Alla är här! 🚀':max>0?'Väntar på '+(max-cur)+' till...':'Väntar på spelare...'
   const sb=document.getElementById('btn-start-game')
   if(S.isHost&&cur>=2){sb.style.display='flex';sb.disabled=false;sb.textContent='🚀 Starta ändå ('+cur+' spelare)'}
   else if(S.isHost){sb.style.display='flex';sb.disabled=true;sb.textContent='Behöver minst 2 spelare'}
-  else{sb.style.display='none'}
+  else sb.style.display='none'
 }
 document.getElementById('btn-start-game').addEventListener('click',async()=>{if(S.isHost&&S.players.length>=2)await startGame()})
 
 async function startGame(){
-  let deck=shuffle(buildDeck())
+  let deck=shuffle(buildDeck(S.players.length))
   const players=shuffle([...S.players])
-  const hands={}
-  players.forEach(p=>{hands[p.id]=[]})
+  const hands={};players.forEach(p=>{hands[p.id]=[]})
   for(let i=0;i<7;i++)players.forEach(p=>{hands[p.id].push(deck.pop())})
   let topCard=deck.pop()
   while(topCard.type!=='number'){deck.unshift(topCard);topCard=deck.pop()}
   for(let i=0;i<players.length;i++)await supabase.from('players').update({turn_order:i,hand:hands[players[i].id],kulo_called:false,rules_ok:false}).eq('id',players[i].id)
-  const me=players.find(p=>p.id===S.playerId)
-  if(me)S.myHand=hands[me.id]
-  // Go to rules screen first
-  await updateGame(S.gameId,{
-    status:'rules',current_player_index:0,direction:1,
-    top_card:topCard,active_color:topCard.color||null,
-    draw_pile:deck,discard_pile:[topCard],
-    frozen_turns:{},pending_draw:0,winner_id:null,last_action:null,
-  })
+  const me=players.find(p=>p.id===S.playerId);if(me)S.myHand=hands[me.id]
+  await updateGame(S.gameId,{status:'rules',current_player_index:0,direction:1,top_card:topCard,active_color:topCard.color||null,draw_pile:deck,discard_pile:[topCard],frozen_turns:{},pending_draw:0,winner_id:null,last_action:null})
 }
 
-// ── RULES SCREEN ──────────────────────────────────────────────
+// ── RULES ─────────────────────────────────────────────────────
 function renderRules(){
   show('rules')
-  // Update confirmed list
-  const confirmed=S.players.filter(p=>p.rules_ok)
-  const total=S.players.length
+  const confirmed=S.players.filter(p=>p.rules_ok),total=S.players.length
   const cl=document.getElementById('rules-confirmed-list');cl.innerHTML=''
-  confirmed.forEach(p=>{
-    const b=document.createElement('div');b.className='confirmed-badge';b.textContent='✅ '+p.name
-    cl.appendChild(b)
-  })
-  const wt=document.getElementById('rules-wait-text')
-  wt.textContent=confirmed.length+' / '+total+' har tryckt Förstår'
-  const me=S.players.find(p=>p.id===S.playerId)
-  const okBtn=document.getElementById('btn-rules-ok')
-  if(me?.rules_ok){okBtn.disabled=true;okBtn.textContent='✅ Klart!'}
-  else{okBtn.disabled=false;okBtn.textContent='✅ Förstår!'}
-  // If all confirmed and I am host → start playing
-  if(confirmed.length>=total&&S.isHost){
-    setTimeout(async()=>{
-      await updateGame(S.gameId,{status:'playing'})
-    },500)
-  }
+  confirmed.forEach(p=>{const b=document.createElement('div');b.className='confirmed-badge';b.textContent='✅ '+p.name;cl.appendChild(b)})
+  document.getElementById('rules-wait-text').textContent=confirmed.length+' / '+total+' har tryckt Förstår'
+  const me=S.players.find(p=>p.id===S.playerId),okBtn=document.getElementById('btn-rules-ok')
+  okBtn.disabled=!!me?.rules_ok;okBtn.textContent=me?.rules_ok?'✅ Klart!':'✅ Förstår!'
+  if(confirmed.length>=total&&S.isHost)setTimeout(async()=>await updateGame(S.gameId,{status:'playing'}),600)
 }
 document.getElementById('btn-rules-ok').addEventListener('click',async()=>{
   await updatePlayer(S.playerId,{rules_ok:true})
-  document.getElementById('btn-rules-ok').disabled=true
-  document.getElementById('btn-rules-ok').textContent='✅ Klart!'
+  document.getElementById('btn-rules-ok').disabled=true;document.getElementById('btn-rules-ok').textContent='✅ Klart!'
 })
 
 // ── GAME ──────────────────────────────────────────────────────
 function renderGame(){
   const game=S.game,players=S.players
-  const me=players.find(p=>p.id===S.playerId)
-  if(!me)return
+  const me=players.find(p=>p.id===S.playerId);if(!me)return
   S.myHand=me.hand||[]
   const isMyTurn=myTurn(),frozen=isFrozen()
   const cur=players[game.current_player_index]
 
-  document.getElementById('game-turn-label')?.remove()
-  document.getElementById('game-logo')?.setAttribute('title',isMyTurn?(frozen?'❄️ Du är fryst':'🎯 Din tur'):cur?.name+'s tur')
+  // Mute button
+  const mb=document.getElementById('mute-btn')
+  if(mb)mb.textContent=S.muted?'🔇':'🔊'
 
   // Opponents
-  const othersEl=document.getElementById('game-others');othersEl.innerHTML=''
+  const oe=document.getElementById('game-others');oe.innerHTML=''
   players.filter(p=>p.id!==S.playerId).forEach(p=>{
     const isActive=players[game.current_player_index]?.id===p.id
     const fl=(game.frozen_turns||{})[p.id]||0
@@ -305,8 +318,7 @@ function renderGame(){
       <div class="opp-count">${hc} kort</div>
       ${p.kulo_called?'<div class="opp-kulo">KULO!</div>':''}
       ${fl>0?`<div class="opp-frozen">❄️ ${fl}t</div>`:''}
-    `
-    othersEl.appendChild(d)
+    `;oe.appendChild(d)
   })
 
   // Top card
@@ -324,24 +336,20 @@ function renderGame(){
   // Color dot
   const cd=document.getElementById('active-color-dot')
   if(game.active_color){cd.style.background=colorBgByName(game.active_color);cd.style.display='block'}
-  else{cd.style.display='none'}
+  else cd.style.display='none'
 
-  // Turn label in top bar
-  const tl=document.getElementById('turn-timer')
-  if(!isMyTurn){tl.textContent='';tl.className='turn-timer'}
-
-  // Status
+  // Status banner
   const banner=document.getElementById('status-banner')
   if(isMyTurn&&frozen){
-    banner.className='status-banner frozen'
     const fl=(game.frozen_turns||{})[S.playerId]||0
-    banner.textContent='❄️ Fryst — '+fl+' tur'+(fl>1?'er':'')+' kvar'
-  }else if(isMyTurn){
+    banner.className='status-banner frozen'
+    banner.textContent='❄️ Du är fryst — '+fl+' tur'+(fl>1?'er':'')+' kvar'
+  } else if(isMyTurn){
     banner.className='status-banner your-turn'
-    banner.textContent=game.pending_draw>0?'⚡ Dra '+game.pending_draw+' kort eller stacka!':'✨ Din tur!'
-  }else{
+    banner.textContent=game.pending_draw>0?'⚡ Dra '+game.pending_draw+' kort (eller stacka)':'✨ Din tur!'
+  } else {
     banner.className='status-banner waiting'
-    banner.textContent='⏳ '+( cur?.name||'')+'s tur...'
+    banner.textContent='⏳ '+(cur?.name||'')+'s tur...'
   }
 
   // Draw pile
@@ -349,7 +357,6 @@ function renderGame(){
   dp.appendChild(renderCard(null,{isBack:true,large:true}))
 
   renderHand(isMyTurn&&!frozen)
-
   document.getElementById('kulo-btn').style.display=(S.myHand.length===1&&!me.kulo_called)?'block':'none'
 }
 
@@ -357,8 +364,7 @@ function renderHand(canAct){
   const he=document.getElementById('hand-cards');he.innerHTML=''
   const game=S.game
   const sorted=[...S.myHand].map((c,i)=>({c,i})).sort((a,b)=>{
-    const o={number:0,special:1,wild:2}
-    const d=(o[a.c.type]||0)-(o[b.c.type]||0)
+    const o={number:0,special:1,wild:2},d=(o[a.c.type]||0)-(o[b.c.type]||0)
     if(d!==0)return d
     if(a.c.type==='number')return(a.c.value||0)-(b.c.value||0)
     return(a.c.name||'').localeCompare(b.c.name||'')
@@ -377,41 +383,59 @@ function renderHand(canAct){
   })
 }
 
+// Draw pile click
 document.getElementById('draw-pile-slot').addEventListener('click',async()=>{
   if(!myTurn()||isFrozen())return
   if(S.game?.pending_draw>0){
     const hasStack=S.myHand.some(c=>c.name==='Dra 2'||c.name==='Dra 4')
-    if(!hasStack){await doDraw(S.game.pending_draw);return}
-    toast('Du kan stacka ett Dra-kort!')
+    if(!hasStack){await doDraw(S.game.pending_draw,false,false);return}
+    toast('Du kan stacka ett Dra-kort, eller tryck igen för att dra')
     return
   }
-  await doDraw(1,true)
+  await doDraw(1,true,false)
 })
 
-async function doDraw(count,fromClick=false){
+// doDraw: count=antal, fromClick=om spelaren klickade själv, forced=om det är påtvingat av motståndare
+async function doDraw(count,fromClick,forced){
   const game=S.game
   let deck=[...(game.draw_pile||[])],discard=[...(game.discard_pile||[])]
-  if(deck.length<count){const keep=discard.splice(discard.length-1,1);deck=shuffle(discard);discard=keep;toast('Kortleken blandas om! 🔀')}
+  if(deck.length<count){
+    const keep=discard.splice(discard.length-1,1)
+    deck=shuffle(discard);discard=keep;toast('Kortleken blandas om! 🔀')
+  }
   const drawn=deck.splice(deck.length-count,count)
   const newHand=[...S.myHand,...drawn]
   S.myHand=newHand
   await updatePlayer(S.playerId,{hand:newHand})
   await updateGame(S.gameId,{draw_pile:deck,discard_pile:discard,pending_draw:0})
-  if(fromClick&&drawn.length===1){
-    if(canPlay(drawn[0],game.top_card,game.active_color)){toast('Passar — tryck för att lägga!');renderHand(true);return}
-    else{toast('Passar inte, passar!')}
+
+  if(forced){
+    // After forced draw, advance turn
+    await advanceToNext(game.direction,0)
+    return
   }
-  await advanceToNext()
+
+  if(fromClick&&drawn.length===1){
+    if(canPlay(drawn[0],game.top_card,game.active_color)){
+      stopTimer()
+      toast('Du drog ett kort som passar — tryck för att lägga det!')
+      renderHand(true)
+      return // Player can choose to play or not — but we start fresh timer
+    } else {
+      toast('Kortet passar inte, passar!')
+    }
+  }
+  await advanceToNext(game.direction,0)
 }
 
 async function playCard(idx){
   const card=S.myHand[idx],game=S.game,players=S.players
   S.selectedCard=null
+  stopTimer()
   if(game.pending_draw>0&&card.name!=='Dra 2'&&card.name!=='Dra 4'){toast('Dra kort eller stacka! 😬');return}
   const newHand=S.myHand.filter((_,i)=>i!==idx)
   S.myHand=newHand
   await updatePlayer(S.playerId,{hand:newHand})
-  stopTimer()
   const newDiscard=[...(game.discard_pile||[]),card]
   const updates={top_card:card,discard_pile:newDiscard,active_color:card.color||game.active_color,pending_draw:0}
   let skip=0,rev=false,pd=0,needColor=false,needTarget=false,ta=null
@@ -421,6 +445,7 @@ async function playCard(idx){
     case 'Dra 2':pd=(game.pending_draw||0)+2;break
     case 'Dra 4':pd=(game.pending_draw||0)+4;needColor=true;break
     case 'Byt Färg':needColor=true;break
+    // Frys är borttaget vid 2 spelare (hanteras i buildDeck)
     case 'Frys':needTarget=true;ta='frys';break
     case 'Ge Bort':needTarget=true;ta='gebart';break
     case 'Stjäl':needTarget=true;ta='stjal';break
@@ -432,35 +457,30 @@ async function playCard(idx){
     showColorPicker(async(color)=>{
       updates.active_color=color
       if(rev)updates.direction=game.direction*-1
-      // If draw card, notify next player
       if(pd>0){
-        const nextIdx=nextPlayerIndex(game.current_player_index,rev?game.direction*-1:game.direction,players.length,1)
-        const nextPlayer=players[nextIdx]
-        updates.last_action={type:'draw',by:S.playerId,target:nextPlayer?.id,count:pd,card:card.name,seen_by:[]}
+        const ni=nextPlayerIndex(game.current_player_index,rev?game.direction*-1:game.direction,players.length,1)
+        const np=players[ni]
+        updates.last_action={type:'draw',by:S.playerId,target:np?.id,count:pd,card:card.name,seen_by:[]}
       }
       await updateGame(S.gameId,updates)
       await advanceToNext(rev?game.direction*-1:game.direction,pd>0?1:skip)
       await checkWin(newHand)
-    })
-    return
+    });return
   }
 
   if(needTarget){
-    const others=players.filter(p=>p.id!==S.playerId)
-    if(!others.length){await updateGame(S.gameId,updates);await advanceToNext();await checkWin(newHand);return}
-    const titles={frys:'❄️ Välj vem som fryser',gebart:'🤝 Välj vem som får kort',stjal:'🎯 Stjäl från vem?',bythand:'🔄 Byt hand med vem?'}
+    if(players.filter(p=>p.id!==S.playerId).length===0){await updateGame(S.gameId,updates);await advanceToNext(game.direction,0);await checkWin(newHand);return}
+    const titles={frys:'❄️ Vem ska frysa?',gebart:'🤝 Ge kort till vem?',stjal:'🎯 Stjäl från vem?',bythand:'🔄 Byt hand med vem?'}
     showTargetPicker(players,S.playerId,titles[ta],async(tid)=>{
       await applyTarget(ta,tid,updates,rev,skip);await checkWin(newHand)
-    })
-    return
+    });return
   }
 
   if(rev){updates.direction=game.direction*-1;if(players.length===2)skip=1}
-  // Notify next player for Dra 2
   if(pd>0){
-    const nextIdx=nextPlayerIndex(game.current_player_index,rev?game.direction*-1:game.direction,players.length,1)
-    const nextPlayer=players[nextIdx]
-    updates.last_action={type:'draw',by:S.playerId,target:nextPlayer?.id,count:pd,card:card.name,seen_by:[]}
+    const ni=nextPlayerIndex(game.current_player_index,rev?game.direction*-1:game.direction,players.length,1)
+    const np=players[ni]
+    updates.last_action={type:'draw',by:S.playerId,target:np?.id,count:pd,card:card.name,seen_by:[]}
   }
   await updateGame(S.gameId,updates)
   await advanceToNext(rev?game.direction*-1:game.direction,skip)
@@ -471,25 +491,47 @@ async function applyTarget(action,tid,updates,rev,skip){
   const game=S.game,players=S.players
   const target=players.find(p=>p.id===tid);if(!target)return
   let th=[...(target.hand||[])],mh=[...S.myHand]
-  if(action==='frys'){const fr={...(game.frozen_turns||{})};fr[tid]=(fr[tid]||0)+2;updates.frozen_turns=fr;toast('❄️ '+target.name+' är fryst i 2 turer!')}
-  else if(action==='gebart'){const n=Math.min(3,mh.length),toGive=mh.splice(mh.length-n,n);th=[...th,...toGive];S.myHand=mh;await updatePlayer(S.playerId,{hand:mh});await updatePlayer(tid,{hand:th});toast('🤝 Gav '+n+' kort till '+target.name+'!')}
-  else if(action==='stjal'){if(!th.length){toast(target.name+' har inga kort!')}else{const si=Math.floor(Math.random()*th.length),st=th.splice(si,1)[0];mh=[...mh,st];S.myHand=mh;await updatePlayer(S.playerId,{hand:mh});await updatePlayer(tid,{hand:th});toast('🎯 Du stal ett kort från '+target.name+'!')}}
-  else if(action==='bythand'){S.myHand=th;await updatePlayer(S.playerId,{hand:th});await updatePlayer(tid,{hand:mh});toast('🔄 Bytte hand med '+target.name+'!')}
+  if(action==='frys'){
+    // Frys: target missar nästa 2 TUR (vi sätter frozen_turns[id]=2)
+    const fr={...(game.frozen_turns||{})};fr[tid]=(fr[tid]||0)+2
+    updates.frozen_turns=fr;toast('❄️ '+target.name+' är fryst i 2 turer!')
+  } else if(action==='gebart'){
+    const n=Math.min(3,mh.length),toGive=mh.splice(mh.length-n,n)
+    th=[...th,...toGive];S.myHand=mh
+    await updatePlayer(S.playerId,{hand:mh});await updatePlayer(tid,{hand:th})
+    toast('🤝 Gav '+n+' kort till '+target.name+'!')
+  } else if(action==='stjal'){
+    if(!th.length)toast(target.name+' har inga kort!')
+    else{const si=Math.floor(Math.random()*th.length),st=th.splice(si,1)[0];mh=[...mh,st];S.myHand=mh;await updatePlayer(S.playerId,{hand:mh});await updatePlayer(tid,{hand:th});toast('🎯 Du stal ett kort från '+target.name+'!')}
+  } else if(action==='bythand'){
+    S.myHand=th;await updatePlayer(S.playerId,{hand:th});await updatePlayer(tid,{hand:mh})
+    toast('🔄 Bytte hand med '+target.name+'!')
+  }
   if(rev)updates.direction=game.direction*-1
   await updateGame(S.gameId,updates)
   await advanceToNext(rev?game.direction*-1:game.direction,skip)
 }
 
-async function advanceToNext(dir,extraSkip=0){
+async function advanceToNext(dir,extraSkip){
   const game=S.game,players=S.players
-  const d=dir??game.direction
-  const nextIdx=nextPlayerIndex(game.current_player_index,d,players.length,1+extraSkip)
+  const d=dir??game.direction,es=extraSkip??0
+  const nextIdx=nextPlayerIndex(game.current_player_index,d,players.length,1+es)
   const frozen={...(game.frozen_turns||{})}
   const next=players[nextIdx]
+
+  // Om näste är fryst: räkna ner och hoppa
   if(next&&(frozen[next.id]||0)>0){
-    frozen[next.id]--;toast('❄️ '+next.name+' är fryst, hoppar!')
-    const si=nextPlayerIndex(nextIdx,d,players.length,1)
-    await updateGame(S.gameId,{current_player_index:si,frozen_turns:frozen,direction:d})
+    frozen[next.id]--
+    toast('❄️ '+next.name+' är fryst, hoppar!')
+    // Om fortfarande fryst efter minskning, hoppa igen
+    if(frozen[next.id]>0){
+      const skipIdx=nextPlayerIndex(nextIdx,d,players.length,1)
+      await updateGame(S.gameId,{current_player_index:skipIdx,frozen_turns:frozen,direction:d})
+    } else {
+      // Tur räknas ner till 0 — den spelaren är nu fri men hoppar denna runda
+      const skipIdx=nextPlayerIndex(nextIdx,d,players.length,1)
+      await updateGame(S.gameId,{current_player_index:skipIdx,frozen_turns:frozen,direction:d})
+    }
     return
   }
   await updateGame(S.gameId,{current_player_index:nextIdx,direction:d})
@@ -498,6 +540,9 @@ async function advanceToNext(dir,extraSkip=0){
 async function checkWin(hand){if(hand.length===0)await updateGame(S.gameId,{status:'finished',winner_id:S.playerId})}
 
 document.getElementById('kulo-btn').addEventListener('click',async()=>{await updatePlayer(S.playerId,{kulo_called:true});toast('🔔 KULO! Du är säker!')})
+
+// Mute button
+document.getElementById('mute-btn').addEventListener('click',()=>{initAudio();toggleMute()})
 
 // ── WINNER ────────────────────────────────────────────────────
 function renderWinner(){
@@ -520,8 +565,7 @@ document.getElementById('btn-leave').addEventListener('click',async()=>{
 // ── INIT ──────────────────────────────────────────────────────
 ;(async()=>{
   document.querySelectorAll('.screen').forEach(s=>{s.style.display='none'})
-  const params=new URLSearchParams(window.location.search)
-  const joinCode=params.get('join')
+  const params=new URLSearchParams(window.location.search),joinCode=params.get('join')
   if(joinCode){
     window.history.replaceState({},'','/')
     document.getElementById('setup-title').textContent='Gå med i spel'
@@ -530,8 +574,7 @@ document.getElementById('btn-leave').addEventListener('click',async()=>{
     document.getElementById('setup-players-row').style.display='none'
     document.getElementById('setup-color-row').style.display='none'
     document.getElementById('game-code').value=joinCode
-    show('setup')
-    return
+    show('setup');return
   }
   show('home')
 })()
