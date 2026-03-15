@@ -4,11 +4,11 @@
   --text:#f0f0f0;--muted:rgba(255,255,255,0.42);--accent:#e74c3c;--gold:#f39c12;--green:#27ae60;
   --cw:80px;--ch:118px;--cw-lg:100px;--ch-lg:148px;
 }
-html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;overflow:hidden;-webkit-tap-highlight-color:transparent;user-select:none}
-#app{height:100%;overflow:hidden}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;-webkit-tap-highlight-color:transparent;user-select:none}
+#app{min-height:100%}
 
 /* ── Screens ── */
-.screen{display:none;flex-direction:column;align-items:center;min-height:100vh;padding:28px 16px 40px;gap:14px;animation:fadeIn .2s ease}
+.screen{display:none;flex-direction:column;align-items:center;min-height:100vh;padding:28px 16px 40px;gap:14px;animation:fadeIn .2s ease;overflow-y:auto}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
 /* ── Logo / type ── */
@@ -85,7 +85,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Nunito
 .confirmed-badge{font-family:'Fredoka One',cursive;font-size:11px;background:rgba(39,174,96,.25);color:#2ecc71;border:1px solid rgba(39,174,96,.4);border-radius:20px;padding:3px 10px}
 
 /* ── Game layout ── */
-.game-layout{padding:0!important;justify-content:space-between!important;height:100vh!important;max-height:100vh!important;overflow:hidden!important;background:#0a1628!important;gap:0!important}
+.game-layout{padding:0!important;justify-content:space-between!important;height:100vh!important;max-height:100vh!important;overflow:hidden!important;background:#0a1628!important;gap:0!important;position:fixed!important;inset:0!important;}
 
 .game-top{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(0,0,0,.3);border-bottom:1px solid var(--border);flex-shrink:0}
 .game-logo{font-family:'Fredoka One',cursive;font-size:20px;letter-spacing:.1em;color:#fff;text-shadow:1px 1px 0 #e74c3c}
